@@ -88,3 +88,20 @@ Ambas trazan cada fila hasta su origen exacto (`source_path` + `section_path`), 
 - La detección de idioma es heurística (conteo de stopwords), no un clasificador robusto.
 - Los templates de OpenAPI describen solo 1 nivel de propiedades anidadas en schemas complejos.
 
+## Archivo de presentación
+
+- Dentro de la carpeta `presentation/` se encuentra el archivo
+  `presentation-pipeline-flow.html`, utilizado como apoyo para la sustentación de la solución.
+
+- La presentación documenta de forma visual y detallada:
+  - El contexto del desafío y las características del corpus procesado.
+  - La arquitectura completa del pipeline (`build-corpus` y `build-qa`).
+  - Las decisiones de diseño y los criterios técnicos adoptados en cada etapa.
+  - Los hallazgos encontrados durante el análisis y procesamiento de la documentación.
+  - Los mecanismos implementados para garantizar calidad, reproducibilidad y evitar data leakage.
+  - Los trade-offs considerados y las limitaciones conocidas de la solución.
+  - La estructura y estadísticas de los datasets finales generados (`corpus.jsonl` y `qa.jsonl`).
+
+- El objetivo del documento es facilitar la comprensión del razonamiento detrás de la implementación, complementando el código fuente y permitiendo seguir el flujo completo desde los documentos originales hasta la generación del dataset final para LLMs.
+
+

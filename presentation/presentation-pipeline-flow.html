@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>docs2llm — flujo del pipeline</title>
+<style>
+  :root {
+    --paper: #EAECEF;
+    --paper-2: #FFFFFF;
+    --ink: #1A1D24;
+    --ink-soft: #3A3F4B;
+    --muted: #5C6270;
+    --accent: #B7761E;
+    --accent-ink: #6B4712;
+    --accent-soft: #F0DAB2;
+    --accent-soft-bg: #FBF1DE;
+    --good: #2F7A63;
+    --good-soft: #D9EDE5;
+    --bad: #A84438;
+    --bad-soft: #F5E1DE;
+    --line: rgba(26,29,36,.14);
+    --card-bg: #FFFFFF;
+    --mono-bg: #F3F1EA;
+    --shadow: 0 1px 2px rgba(20,22,28,.06), 0 10px 28px rgba(20,22,28,.06);
+    --font-display: Georgia, "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
+    --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-mono: ui-monospace, "Cascadia Code", "SF Mono", Consolas, "Liberation Mono", monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #14161B;
+      --paper-2: #1B1E25;
+      --ink: #ECEDEF;
+      --ink-soft: #C7CAD1;
+      --muted: #9297A3;
+      --accent: #E3A947;
+      --accent-ink: #FBE7BE;
+      --accent-soft: #3C2E13;
+      --accent-soft-bg: #2A2110;
+      --good: #63B79A;
+      --good-soft: #16332B;
+      --bad: #E08B7D;
+      --bad-soft: #3A211D;
+      --line: rgba(255,255,255,.13);
+      --card-bg: #1B1E25;
+      --mono-bg: #22252D;
+      --shadow: 0 1px 2px rgba(0,0,0,.5), 0 10px 28px rgba(0,0,0,.35);
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 78rem; margin: 0 auto; padding: 3.5rem 1.5rem 5rem; }
+
+  a { color: var(--accent-ink); }
+  code, .mono { font-family: var(--font-mono); }
+
+  .eyebrow {
+    font-family: var(--font-mono); font-size: .75rem; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--muted); display: flex; align-items: center; gap: .6rem;
+  }
+  .eyebrow .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex: none; }
+
+  h1 {
+    font-family: var(--font-display); font-weight: 400; font-size: clamp(1.9rem, 4vw, 2.7rem);
+    line-height: 1.15; margin: .5rem 0 .9rem; text-wrap: balance; max-width: 34ch;
+  }
+  .dek { font-size: 1.05rem; color: var(--ink-soft); max-width: 66ch; margin: 0; }
+
+  header.masthead { margin-bottom: 2rem; padding-bottom: 2rem; border-bottom: 1px solid var(--line); }
+
+  .io-strip {
+    display: flex; align-items: center; gap: .9rem; flex-wrap: wrap;
+    margin-top: 1.6rem; font-family: var(--font-mono); font-size: .85rem; color: var(--ink-soft);
+  }
+  .io-strip .pill { background: var(--card-bg); border: 1px solid var(--line); border-radius: 999px; padding: .35rem .85rem; box-shadow: var(--shadow); }
+  .io-strip .arrow { color: var(--muted); }
+
+  nav.quicknav { display: flex; gap: 1.3rem; flex-wrap: wrap; margin: 1.6rem 0 3rem; font-family: var(--font-mono); font-size: .78rem; }
+  nav.quicknav a { color: var(--muted); text-decoration: none; border-bottom: 1px dotted var(--line); padding-bottom: 2px; }
+  nav.quicknav a:hover { color: var(--accent-ink); border-bottom-color: var(--accent); }
+
+  section.block { margin: 3.4rem 0; scroll-margin-top: 1.5rem; }
+  .section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: 1.1rem; flex-wrap: wrap; }
+  .section-head h2 { font-family: var(--font-display); font-weight: 400; font-size: 1.55rem; margin: 0; }
+  .section-head .note { font-size: .88rem; color: var(--muted); max-width: 46ch; }
+  .section-intro { font-size: .95rem; color: var(--ink-soft); max-width: 74ch; margin: -.4rem 0 1.4rem; }
+
+  .stat-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: .9rem; }
+  @media (max-width: 900px) { .stat-row { grid-template-columns: repeat(2, 1fr); } }
+  .stat-tile {
+    background: var(--card-bg); border: 1px solid var(--line); border-radius: 12px;
+    padding: 1rem 1.1rem; box-shadow: var(--shadow); text-align: left;
+  }
+  .stat-tile .n { font-family: var(--font-display); font-size: 1.9rem; color: var(--accent-ink); line-height: 1; font-variant-numeric: tabular-nums; }
+  .stat-tile .lbl { font-size: .78rem; color: var(--muted); margin-top: .35rem; }
+
+  .funnel { display: flex; align-items: center; gap: .7rem; flex-wrap: wrap; margin-top: 1.4rem; font-size: .88rem; color: var(--ink-soft); }
+  .funnel .step { background: var(--mono-bg); border: 1px solid var(--line); border-radius: 8px; padding: .4rem .8rem; font-family: var(--font-mono); font-size: .8rem; }
+  .funnel .arrow { color: var(--muted); font-family: var(--font-mono); }
+
+  table.projects { width: 100%; border-collapse: collapse; font-size: .82rem; margin-top: 1.4rem; }
+  table.projects th, table.projects td { text-align: left; padding: .5rem .7rem; border-bottom: 1px solid var(--line); }
+  table.projects th { font-family: var(--font-mono); font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 500; }
+  table.projects td.num { font-variant-numeric: tabular-nums; text-align: right; color: var(--ink-soft); }
+  table.projects td.name { font-family: var(--font-mono); font-size: .78rem; color: var(--ink); }
+  table.projects td.ver { font-family: var(--font-mono); font-size: .74rem; color: var(--muted); }
+  .table-wrap { overflow-x: auto; background: var(--card-bg); border: 1px solid var(--line); border-radius: 14px; padding: .3rem 1.2rem; box-shadow: var(--shadow); }
+
+  .glossary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+  @media (max-width: 900px) { .glossary-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 600px) { .glossary-grid { grid-template-columns: 1fr; } }
+  .gterm { background: var(--card-bg); border: 1px solid var(--line); border-radius: 12px; padding: 1rem 1.15rem; box-shadow: var(--shadow); }
+  .gterm .term { font-family: var(--font-mono); font-size: .84rem; color: var(--accent-ink); font-weight: 600; display: block; margin-bottom: .35rem; }
+  .gterm p { margin: 0; font-size: .84rem; color: var(--ink-soft); }
+
+  .shared-input { background: var(--card-bg); border: 1px solid var(--line); border-radius: 14px; padding: 1.4rem 1.6rem; box-shadow: var(--shadow); display: flex; gap: 1.4rem; flex-wrap: wrap; align-items: center; }
+  .shared-input .label { font-family: var(--font-mono); font-size: .78rem; color: var(--muted); letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }
+  .chip-row { display: flex; gap: .5rem; flex-wrap: wrap; }
+  .chip { font-family: var(--font-mono); font-size: .78rem; padding: .3rem .65rem; border-radius: 7px; background: var(--mono-bg); border: 1px solid var(--line); color: var(--ink-soft); white-space: nowrap; }
+
+  .schematic { margin-top: 1.6rem; background: #FCFBF8; border: 1px solid #DCD7C9; border-radius: 16px; box-shadow: var(--shadow); padding: 1.8rem 1.2rem 1.3rem; overflow-x: auto; }
+  .schematic figcaption { font-family: var(--font-mono); font-size: .74rem; color: #6B6656; text-align: center; margin-top: .7rem; letter-spacing: .02em; line-height: 1.6; }
+  .schematic .mermaid { display: flex; justify-content: center; min-width: 880px; }
+
+  .stage-list { display: flex; flex-direction: column; gap: 1.2rem; }
+
+  .stage { position: relative; background: var(--card-bg); border: 1px solid var(--line); border-radius: 14px; padding: 1.5rem 1.6rem 1.6rem; box-shadow: var(--shadow); }
+  .stage .top-row { display: flex; align-items: flex-start; gap: .9rem; margin-bottom: .9rem; }
+  .stage .num { font-family: var(--font-display); font-size: 1.7rem; color: var(--accent); line-height: 1; flex: none; }
+  .stage .titles { display: flex; flex-direction: column; gap: .2rem; }
+  .stage .filename { font-family: var(--font-mono); font-size: .78rem; color: var(--accent-ink); }
+  .stage h3 { margin: 0; font-size: 1.12rem; font-weight: 600; color: var(--ink); }
+  .stage .body-grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: 1.6rem; align-items: start; }
+  @media (max-width: 860px) { .stage .body-grid { grid-template-columns: 1fr; } }
+  .stage p { margin: 0; font-size: .93rem; color: var(--ink-soft); }
+  .stage p + p { margin-top: .6rem; }
+  .lbl-small { font-size: .7rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); display: block; margin-bottom: .4rem; }
+  .stage .why { margin-top: 1rem; }
+  .stage .uses { margin-top: 1rem; }
+  .stage .io { font-family: var(--font-mono); font-size: .76rem; color: var(--muted); border-top: 1px dashed var(--line); padding-top: .6rem; margin-top: 1.1rem; }
+
+  .finding { border-left: 3px solid var(--accent); background: var(--accent-soft-bg); border-radius: 0 10px 10px 0; padding: .8rem 1rem; font-size: .86rem; color: var(--ink-soft); }
+  .finding .lbl-small { color: var(--accent-ink); }
+
+  .diffbox { margin-top: .3rem; }
+  .diff-cols { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; }
+  @media (max-width: 600px) { .diff-cols { grid-template-columns: 1fr; } }
+  .diff-col { border-radius: 10px; padding: .7rem .85rem; font-family: var(--font-mono); font-size: .74rem; line-height: 1.55; overflow-x: auto; white-space: pre-wrap; word-break: break-word; }
+  .diff-col.before { background: var(--bad-soft); border: 1px solid var(--bad); }
+  .diff-col.after { background: var(--good-soft); border: 1px solid var(--good); }
+  .diff-tag { font-family: var(--font-mono); font-size: .66rem; text-transform: uppercase; letter-spacing: .08em; display: block; margin-bottom: .4rem; font-weight: 600; }
+  .diff-col.before .diff-tag { color: var(--bad); }
+  .diff-col.after .diff-tag { color: var(--good); }
+
+  .callout { border-left: 3px solid var(--good); background: var(--good-soft); border-radius: 0 10px 10px 0; padding: .85rem 1.1rem; font-size: .88rem; color: var(--ink-soft); }
+  .callout b { color: var(--ink); }
+
+  .method-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0; }
+  @media (max-width: 720px) { .method-compare { grid-template-columns: 1fr; } }
+  .method { border: 1px solid var(--line); border-radius: 12px; padding: 1rem 1.15rem; background: var(--mono-bg); }
+  .method .mname { font-family: var(--font-mono); font-weight: 600; font-size: .84rem; color: var(--accent-ink); display: block; margin-bottom: .5rem; }
+  .method p { font-size: .85rem; }
+  .tradeoff { margin-top: 1rem; }
+
+  table.schema { width: 100%; border-collapse: collapse; font-size: .82rem; }
+  table.schema th, table.schema td { text-align: left; padding: .55rem .7rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  table.schema th { font-family: var(--font-mono); font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 500; }
+  table.schema td.field { font-family: var(--font-mono); font-size: .78rem; color: var(--accent-ink); white-space: nowrap; }
+  .schema-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 1.4rem; }
+  @media (max-width: 720px) { .schema-cols { grid-template-columns: 1fr; } }
+  .schema-panel { background: var(--card-bg); border: 1px solid var(--line); border-radius: 14px; padding: 1.2rem 1.3rem; box-shadow: var(--shadow); overflow-x: auto; }
+  .schema-panel h4 { margin: 0 0 .8rem; font-family: var(--font-mono); font-size: .85rem; color: var(--ink); }
+
+  .invariants { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 1.2rem; }
+  @media (max-width: 720px) { .invariants { grid-template-columns: 1fr; } }
+  .invariants .item { background: var(--card-bg); border: 1px solid var(--line); border-radius: 12px; padding: 1rem 1.1rem; box-shadow: var(--shadow); font-size: .85rem; color: var(--ink-soft); }
+  .invariants .item b { display: block; color: var(--ink); font-size: .9rem; margin-bottom: .3rem; }
+
+  footer { margin-top: 3.5rem; padding-top: 1.6rem; border-top: 1px solid var(--line); font-size: .8rem; color: var(--muted); }
+  .byline { font-family: var(--font-mono); font-size: .72rem; letter-spacing: .03em; color: var(--muted); margin: .9rem 0 0; }
+  .byline-bottom { font-family: var(--font-mono); font-size: .72rem; letter-spacing: .03em; color: var(--muted); text-align: center; margin-top: 1.6rem; }
+
+  @media print {
+    body { background: #fff; }
+    .schematic, .stage, .gterm, .stat-tile, .schema-panel, .invariants .item, .shared-input, .table-wrap { box-shadow: none; break-inside: avoid; }
+    nav.quicknav { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="eyebrow"><span class="dot"></span> PIPELINE · docs2llm</div>
+    <h1>De documentación cruda a datasets para LLMs</h1>
+    <p class="dek">Dos comandos, dos etapas: <code>build-corpus</code> transforma documentación desordenada en un corpus normalizado por chunks; <code>build-qa</code> lee ese corpus y genera pares pregunta-respuesta verificados. Cada etapa es una cadena estricta de módulos — el orden importa y cada uno solo hace una cosa.</p>
+    <div class="io-strip">
+      <span class="pill">docs_raw/</span><span class="arrow">→</span><span class="pill">corpus.jsonl</span><span class="arrow">→</span><span class="pill">qa.jsonl</span>
+    </div>
+    <p class="byline">Lina Marcela Angel Cetina — Challenge MeLi</p>
+  </header>
+
+  <nav class="quicknav">
+    <a href="#contexto">Contexto</a>
+    <a href="#glosario">Glosario</a>
+    <a href="#flujo">Flujo completo</a>
+    <a href="#etapa-a">Etapa A</a>
+    <a href="#etapa-b">Etapa B</a>
+    <a href="#garantias">Garantías</a>
+    <a href="#datasets">Datasets finales</a>
+    <a href="#librerias">Librerías</a>
+  </nav>
+
+  <section class="block" id="contexto">
+    <div class="section-head">
+      <h2>Contexto: qué había para procesar</h2>
+      <div class="note">Los números reales de esta corrida — no estimaciones.</div>
+    </div>
+    <div class="stat-row">
+      <div class="stat-tile"><div class="n">10</div><div class="lbl">proyectos de software (ficticios, documentación exportada tipo docsify)</div></div>
+      <div class="stat-tile"><div class="n">67 → 46</div><div class="lbl">archivos en las carpetas elegidas, antes / después de filtrar navegación y metadata</div></div>
+      <div class="stat-tile"><div class="n">43 / 3</div><div class="lbl">archivos Markdown vs. specs OpenAPI (swagger.yaml)</div></div>
+      <div class="stat-tile"><div class="n">334</div><div class="lbl">chunks finales en corpus.jsonl</div></div>
+      <div class="stat-tile"><div class="n">246</div><div class="lbl">pares pregunta-respuesta finales en qa.jsonl</div></div>
+    </div>
+
+    <div class="funnel">
+      <span class="step">docs_raw/ completo: 107 archivos (todas las versiones)</span>
+      <span class="arrow">→</span>
+      <span class="step">se elige 1 versión por proyecto: 67 archivos</span>
+      <span class="arrow">→</span>
+      <span class="step">se filtra navegación/metadata: 46 archivos reales</span>
+      <span class="arrow">→</span>
+      <span class="step">334 chunks (168 prosa · 88 código · 51 api_spec · 27 tabla)</span>
+      <span class="arrow">→</span>
+      <span class="step">246 pares Q&amp;A</span>
+    </div>
+
+    <div class="table-wrap" style="margin-top:1.4rem;">
+      <table class="projects">
+        <thead><tr><th>proyecto</th><th>versión canónica</th><th>archivos</th><th>chunks</th></tr></thead>
+        <tbody>
+          <tr><td class="name">2p-revenue-optimizer-api</td><td class="ver">latest</td><td class="num">4</td><td class="num">16</td></tr>
+          <tr><td class="name">catalog-portfolio-api</td><td class="ver">latest</td><td class="num">8</td><td class="num">105</td></tr>
+          <tr><td class="name">demand-forecast-docs</td><td class="ver">latest</td><td class="num">4</td><td class="num">39</td></tr>
+          <tr><td class="name">order-workflow-api</td><td class="ver">5.6.2-hotfix-1</td><td class="num">8</td><td class="num">22</td></tr>
+          <tr><td class="name">payment-promise-gateway</td><td class="ver">latest</td><td class="num">1</td><td class="num">20</td></tr>
+          <tr><td class="name">price-engine-api</td><td class="ver">latest</td><td class="num">5</td><td class="num">11</td></tr>
+          <tr><td class="name">traffic-gate-api</td><td class="ver">latest</td><td class="num">6</td><td class="num">39</td></tr>
+          <tr><td class="name">unified-transaction-configs</td><td class="ver">v0.0.2</td><td class="num">2</td><td class="num">5</td></tr>
+          <tr><td class="name">vendor-stockkeeper-api</td><td class="ver">0.0.10-stock-consumer</td><td class="num">5</td><td class="num">36</td></tr>
+          <tr><td class="name">zenith-keeper</td><td class="ver">1.1.6</td><td class="num">3</td><td class="num">41</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="section-intro" style="margin-top:1rem;">La columna "versión canónica" no siempre es <code>latest</code>: 4 proyectos tienen varias versiones exportadas, y se verificó con hashes cuál era realmente la más completa — en <code>vendor-stockkeeper-api</code>, por ejemplo, <code>latest</code> resultó ser byte-idéntica a la carpeta <em>más vieja</em> de las tres disponibles.</p>
+  </section>
+
+  <section class="block" id="glosario">
+    <div class="section-head">
+      <h2>Glosario</h2>
+      <div class="note">Los términos que aparecen una y otra vez de acá en adelante.</div>
+    </div>
+    <div class="glossary-grid">
+      <div class="gterm"><span class="term">versión canónica</span><p>La carpeta de documentación elegida como "la buena" cuando un proyecto tiene varias versiones exportadas. Se elige a mano, con evidencia de hashes — no por convención de nombre (<code>latest</code> no siempre es la más nueva).</p></div>
+      <div class="gterm"><span class="term">AST</span><p>Árbol de sintaxis: representación estructurada de un documento (encabezados, tablas, código) en vez de texto plano. Permite saber dónde empieza y termina cada parte sin adivinar por indentación.</p></div>
+      <div class="gterm"><span class="term">bloque atómico</span><p>Una unidad de contenido — una tabla completa, un bloque de código, un párrafo — que nunca se parte a la mitad al armar chunks.</p></div>
+      <div class="gterm"><span class="term">chunk / chunking</span><p>Fragmento final del corpus: agrupar uno o más bloques de una misma sección hasta un tamaño razonable. Es la unidad que luego se usa para retrieval o para generar preguntas.</p></div>
+      <div class="gterm"><span class="term">token / tokenización</span><p>La unidad mínima que "ve" un modelo de lenguaje — no es una palabra ni un carácter. Se mide con un tokenizador real (tiktoken, encoding <code>cl100k_base</code>), no con una aproximación.</p></div>
+      <div class="gterm"><span class="term">deduplicación exacta</span><p>Detectar contenido idéntico (tras normalizar espacios/mayúsculas) calculando un hash SHA-256. Dos fragmentos con el mismo hash son el mismo contenido, sin ambigüedad ni similitud "aproximada".</p></div>
+      <div class="gterm"><span class="term">duplicado aproximado (near-duplicate)</span><p>Dos fragmentos que dicen lo mismo pero con texto distinto (ej. una tabla con una columna renombrada) — hash distinto, mismo significado. Se detecta por similitud coseno entre embeddings semánticos, no por comparación de texto.</p></div>
+      <div class="gterm"><span class="term">componente conexa</span><p>Grupo de documentos que quedan "atados" porque comparten al menos un fragmento duplicado, exacto o aproximado. Existe para que el split nunca separe ese contenido compartido entre train y test.</p></div>
+      <div class="gterm"><span class="term">split (train/val/test)</span><p>Partición del corpus en 3 subconjuntos con roles distintos: train para ajustar, val para validar durante el desarrollo, test para evaluar al final sin haber "visto" antes esos datos.</p></div>
+      <div class="gterm"><span class="term">grounding / evidence_span</span><p>Que una respuesta esté sustentada por una cita textual exacta del documento fuente, verificable como subcadena literal. Es lo que separa un dataset confiable de uno que "sonaba bien".</p></div>
+      <div class="gterm"><span class="term">is_low_signal</span><p>Marca sobre un chunk demasiado corto o puramente placeholder ("TO DO."). No se borra —se preserva para auditoría— pero se excluye de la generación de preguntas.</p></div>
+      <div class="gterm"><span class="term">QC (control de calidad)</span><p>Chequeos automáticos que un par pregunta-respuesta debe pasar antes de entrar al dataset final: evidencia verificada, longitud razonable, no ser casi-duplicado de otra pregunta del mismo proyecto.</p></div>
+      <div class="gterm"><span class="term">tope anti-volumen</span><p>Límite máximo de pares Q&amp;A por documento fuente, para que un archivo grande no domine el dataset final solo por tener más secciones que otros.</p></div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="section-head">
+      <h2>Entrada compartida</h2>
+      <div class="note">Todo lo que sigue lee de acá — nadie hardcodea una ruta o un número por su cuenta.</div>
+    </div>
+    <div class="shared-input">
+      <span class="label">config/config.yaml</span>
+      <div class="chip-row">
+        <span class="chip">canonical_sources — qué versión usar por proyecto</span>
+        <span class="chip">chunking (target/max_tokens, overlap)</span>
+        <span class="chip">dedup (hash + near_duplicate_threshold)</span>
+        <span class="chip">split (seed, fracciones)</span>
+        <span class="chip">qa (tope, modelo LLM)</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="flujo">
+    <div class="section-head">
+      <h2>El flujo completo</h2>
+      <div class="note">Cada nodo muestra qué pasó realmente en esta corrida; las líneas punteadas muestran qué parámetro de config.yaml alimenta esa etapa y con qué valor.</div>
+    </div>
+    <figure class="schematic">
+      <pre class="mermaid">
+%%{init: {"theme":"base","flowchart":{"htmlLabels":true,"padding":16,"nodeSpacing":45,"rankSpacing":55},"themeVariables":{"background":"#FCFBF8","primaryColor":"#F4E1B0","primaryBorderColor":"#8A5A12","primaryTextColor":"#241A05","secondaryColor":"#E7E3D3","secondaryBorderColor":"#6B6656","secondaryTextColor":"#241A05","tertiaryColor":"#FBF6E9","tertiaryBorderColor":"#8A5A12","tertiaryTextColor":"#6B4712","lineColor":"#6B6656","textColor":"#241A05","clusterBkg":"#F5F2E9","clusterBorder":"#D8D2BE","titleColor":"#241A05","edgeLabelBackground":"#FCFBF8","fontFamily":"Consolas, Menlo, monospace","fontSize":"14px"}}}%%
+flowchart TD
+    raw(["docs_raw/&#10;10 proyectos · 107 archivos"])
+    cfg[/"config/config.yaml"/]
+
+    subgraph ETAPA_A["ETAPA A · build-corpus"]
+      direction TB
+      a1["<b>1 · discovery.py</b>&#10;67 → 46 archivos reales"]
+      a2["<b>2 · normalize + parse_*.py</b>&#10;3 bugs de origen corregidos"]
+      a3["<b>3 · chunking.py</b>&#10;334 chunks · tokens reales"]
+      a4["<b>4 · dedup.py</b>&#10;37 duplicados exactos + 17 near-dup"]
+      a5["<b>5 · splitting.py</b>&#10;60/20/20 por proyecto"]
+      a1 --> a2 --> a3 --> a4 --> a5
+    end
+
+    corpus[("corpus.jsonl&#10;334 filas")]
+
+    subgraph ETAPA_B["ETAPA B · build-qa"]
+      direction TB
+      b1["<b>1 · templates + LLM</b>&#10;841 candidatos generados"]
+      b2["<b>2 · qa_grounding.py (QC)</b>&#10;828 pasaron el control"]
+      b3["<b>3 · tope anti-volumen</b>&#10;246 filas finales"]
+      b1 --> b2 --> b3
+    end
+
+    qa[("qa.jsonl&#10;246 filas")]
+
+    raw --> a1
+    a5 --> corpus
+    corpus --> b1
+    b3 --> qa
+
+    cfg -. "canonical_sources: qué versión usar por proyecto" .-> a1
+    cfg -. "chunking: target=300 · max=512 · overlap=60 tok" .-> a3
+    cfg -. "dedup: hash exacto + near_duplicate_threshold=0.9 (embeddings)" .-> a4
+    cfg -. "split: seed=42 · test=20% · val=20%, por proyecto" .-> a5
+    cfg -. "qa: modelo=claude-sonnet-5" .-> b1
+    cfg -. "qa: max_pairs_per_document=8" .-> b3
+
+    classDef stageNode fill:#F4E1B0,stroke:#8A5A12,color:#241A05,stroke-width:1.5px;
+    classDef ioNode fill:#E7E3D3,stroke:#6B6656,color:#241A05,stroke-width:1.5px;
+    classDef cfgNode fill:#FBF6E9,stroke:#8A5A12,color:#6B4712,stroke-width:1px,stroke-dasharray: 3 2;
+    class a1,a2,a3,a4,a5,b1,b2,b3 stageNode;
+    class raw,corpus,qa ioNode;
+    class cfg cfgNode;
+      </pre>
+      <figcaption>línea sólida = flujo de datos · línea punteada = config.yaml alimentando esa etapa (con el parámetro exacto)</figcaption>
+    </figure>
+  </section>
+
+  <section class="block" id="etapa-a">
+    <div class="section-head">
+      <h2>Etapa A — build-corpus</h2>
+      <div class="note">docs_raw/ → corpus.jsonl. 5 pasos estrictamente secuenciales.</div>
+    </div>
+
+    <div class="stage-list">
+
+      <article class="stage">
+        <div class="top-row">
+          <span class="num">1</span>
+          <div class="titles"><span class="filename">discovery.py</span><h3>Descubrimiento de archivos</h3></div>
+        </div>
+        <div class="body-grid">
+          <div>
+            <p>Recorre solo la carpeta <em>canónica</em> de cada proyecto (la versión elegida en <code>config.yaml</code>, no todas las disponibles). Descarta ruido de navegación de docsify (<code>_sidebar.md</code>, <code>_coverpage.md</code>, <code>_navbar.md</code>) y <code>documentationTypes.json</code> (del cual sí extrae una URL de referencia antes de descartarlo). Clasifica cada archivo restante como Markdown u OpenAPI según su extensión.</p>
+            <div class="why"><span class="lbl-small">Por qué así</span><p>Sin este filtro, un archivo de configuración de la UI de docsify terminaría convertido en un chunk de "contenido" — ruido que ni sirve para retrieval ni tiene una respuesta real detrás. Filtrar por nombre de archivo conocido es más simple y predecible que intentar detectar "esto es navegación" por heurística de contenido.</p></div>
+            <div class="uses"><span class="lbl-small">Usa</span><div class="chip-row"><span class="chip">pathlib</span><span class="chip">json (stdlib)</span></div></div>
+          </div>
+          <div>
+            <div class="finding"><span class="lbl-small">Hallazgo</span>En <code>traffic-gate-api</code> el archivo decorativo se llama <code>coverpage.md</code> (sin guion bajo), rompiendo la convención docsify de prefijo <code>_</code> — se agregó a la lista de exclusión a mano tras encontrar ese caso real.</div>
+            <div class="diffbox" style="margin-top:1rem;">
+              <div class="diff-cols">
+                <div class="diff-col before"><span class="diff-tag">antes · carpeta cruda (catalog-portfolio-api, 10 archivos)</span>documentationTypes.json
+guide/_sidebar.md
+guide/README.md
+guide/api-reference/README.md
+guide/api-reference/brands.md
+guide/architecture/README.md
+guide/brand-management/README.md
+guide/setup/README.md
+guide/setup/local-development.md
+guide/troubleshooting/README.md</div>
+                <div class="diff-col after"><span class="diff-tag">después · SourceFile (8 archivos)</span>guide/README.md
+guide/api-reference/README.md
+guide/api-reference/brands.md
+guide/architecture/README.md
+guide/brand-management/README.md
+guide/setup/README.md
+guide/setup/local-development.md
+guide/troubleshooting/README.md
+
+(se descartan _sidebar.md y documentationTypes.json)</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="io">canonical_sources → list[SourceFile]</div>
+      </article>
+
+      <article class="stage">
+        <div class="top-row">
+          <span class="num">2</span>
+          <div class="titles"><span class="filename">normalize.py + parse_markdown.py / parse_openapi.py</span><h3>Normalización y parseo</h3></div>
+        </div>
+        <div class="body-grid">
+          <div>
+            <p>Antes de parsear, 3 fixes puntuales sobre Markdown: encabezados <code>#Titulo</code> sin espacio, entidades HTML doble-escapadas dentro de bloques de código, y líneas de estilo Mermaid repetidas dentro del mismo diagrama. Luego <code>parse_markdown.py</code> arma un AST real vía <code>markdown-it-py</code> (no corta por caracteres) y lo convierte en un árbol de Secciones con bloques atómicos. <code>parse_openapi.py</code> hace lo mismo para <code>swagger.yaml</code>: una sección por endpoint y una por schema, resolviendo <code>$ref</code> a mano.</p>
+            <div class="why"><span class="lbl-small">Por qué así</span><p>Se parsea Markdown y OpenAPI con dos parsers <b>separados</b> (no un chunker de texto genérico) porque un swagger.yaml tiene estructura rica — parámetros, enums cerrados, códigos de respuesta — que se pierde si se trocea por líneas: partir un endpoint entre "parameters:" y "responses:" da un chunk que no sirve ni para retrieval ni para generar una pregunta completa. Un AST real (en vez de partir por líneas en blanco) es lo único que garantiza no cortar una tabla o un bloque de código a la mitad más adelante.</p></div>
+            <div class="uses"><span class="lbl-small">Usa</span><div class="chip-row"><span class="chip">markdown-it-py</span><span class="chip">mdit-py-plugins (tablas)</span><span class="chip">beautifulsoup4</span><span class="chip">PyYAML</span></div></div>
+          </div>
+          <div>
+            <div class="finding"><span class="lbl-small">Hallazgo</span><code>vendor-stockkeeper-api/important.md</code> tenía 546 apariciones de <code>&amp;#34;</code> dentro de bloques de código JSON (probablemente exportado desde HTML ya renderizado) — 0 en las otras versiones del mismo proyecto. <code>zenith-keeper</code> tenía 2 encabezados rotos (<code>#Use cases</code>) que sin este fix quedaban invisibles para el árbol de secciones.</div>
+            <div class="diffbox" style="margin-top:1rem;">
+              <div class="diff-cols">
+                <div class="diff-col before"><span class="diff-tag">antes · important.md (dentro de ```json)</span>{
+  &amp;#34;received&amp;#34;: [
+    {
+      &amp;#34;id&amp;#34;: 250565042,
+      &amp;#34;was_declared&amp;#34;: true,</div>
+                <div class="diff-col after"><span class="diff-tag">después</span>{
+  "received": [
+    {
+      "id": 250565042,
+      "was_declared": true,</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="io">archivo crudo → list[Section] con Blocks</div>
+      </article>
+
+      <article class="stage">
+        <div class="top-row">
+          <span class="num">3</span>
+          <div class="titles"><span class="filename">chunking.py</span><h3>Empaquetado en chunks</h3></div>
+        </div>
+        <div class="body-grid">
+          <div>
+            <p>Bin-packing heading-aware: acumula bloques de la misma sección hasta ~300 tokens (blando), corta a los 512 (duro), y <b>nunca parte una tabla o bloque de código a la mitad</b> salvo que uno solo ya exceda el máximo (ahí cae a una ventana con solape de 60 tokens). Secciones muy chicas se funden con la siguiente; los chunks de OpenAPI nunca se funden. Un chunk resultante muy corto o placeholder se marca <code>is_low_signal</code>, no se descarta.</p>
+            <div class="why"><span class="lbl-small">Por qué así</span><p><b>300 / 512 / 60</b> no son arbitrarios: 300 tokens es un fragmento con contexto suficiente para responder una pregunta sin arrastrar contenido de otra sección; 512 es el tope duro que evita chunks desproporcionados cuando una sección es rica; 60 (~15% de 512) es solapamiento solo para el caso raro de ventana, para no perder contexto justo en el corte. Nunca partir tablas/código no es una preferencia estética: una tabla partida a la mitad entre dos chunks arruina cualquier pregunta que dependa de ver fila+encabezado juntos.</p></div>
+            <div class="uses"><span class="lbl-small">Usa</span><div class="chip-row"><span class="chip">tiktoken (cl100k_base)</span><span class="chip">encoding vendorizado, sin red</span></div></div>
+          </div>
+          <div>
+            <div class="finding"><span class="lbl-small">Hallazgo</span>El fallback de ventana con solape (para un bloque que por sí solo supera 512 tokens) <b>nunca se activó con datos reales</b> de docs_raw — solo se ejercita en tests sintéticos. La única vez que una sección superó el máximo (<code>traffic-gate-api/arch.md</code>, sección "Jobs", 526 tokens), el empaquetador la partió en 2 chunks respetando bloques completos, sin necesitar el fallback.</div>
+            <div class="diffbox" style="margin-top:1rem;">
+              <div class="diff-cols">
+                <div class="diff-col before"><span class="diff-tag">antes · sección "Jobs" (5 bloques, 526 tok — supera max=512)</span>RetailHub provee un servicio de Jobs [...]
+(bloque 2, 3, 4, 5 de la misma sección,
+todos juntos suman 526 tokens)</div>
+                <div class="diff-col after"><span class="diff-tag">después · 2 chunks, ningún bloque partido</span>chunk 1: 364 tokens (bloques 1-3)
+chunk 2: 162 tokens (bloques 4-5)</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="io">list[Section] → list[Chunk] (con n_tokens real)</div>
+      </article>
+
+      <article class="stage">
+        <div class="top-row">
+          <span class="num">4</span>
+          <div class="titles"><span class="filename">dedup.py</span><h3>Deduplicación</h3></div>
+        </div>
+        <div class="body-grid">
+          <div>
+            <p>Opera sobre el corpus <b>completo</b>, no archivo por archivo, en dos capas. <b>Capa 1 (hash exacto):</b> hashea cada bloque/chunk (espacios colapsados, sin mayúsculas) y marca todo duplicado exacto excepto el primero visto (nunca borra filas). <b>Capa 2 (near-duplicates, embeddings):</b> para contenido que cambió de texto pero no de significado (ej. una tabla con una columna renombrada entre versiones), compara embeddings semánticos (<code>sentence-transformers</code>, modelo <code>all-MiniLM-L6-v2</code> vendorizado, sin red) con similitud coseno. Las dos capas alimentan las mismas <em>componentes conexas</em> vía union-find: si un fragmento aparece repetido (exacto o aproximado) en varios archivos, esos archivos quedan atados — es la unidad real que usa el split.</p>
+            <div class="why"><span class="lbl-small">Por qué así</span><p>El hash es ciego a contenido que dice "casi" lo mismo con texto distinto — de ahí la segunda capa. El hash se calcula a nivel de <b>bloque atómico</b>, no del chunk ya empaquetado — un fragmento repetido que queda mezclado con contexto distinto en cada archivo no se detecta si se compara recién el chunk final, por eso hay una primera pasada de parseo completo antes de chunkear nada. El umbral de similitud (0.9) se calibró de forma empírica contra el corpus real, no copiado de un valor de literatura: los chunks <code>api_spec</code> quedan excluidos de esta capa porque su formato fijo (ver <code>parse_openapi.py</code>) hace que operaciones genuinamente distintas den similitud alta solo por compartir plantilla, no contenido repetido.</p></div>
+            <div class="uses"><span class="lbl-small">Usa</span><div class="chip-row"><span class="chip">hashlib (sha256)</span><span class="chip">union-find propio</span><span class="chip">sentence-transformers</span><span class="chip">scikit-learn (cosine_similarity)</span></div></div>
+          </div>
+          <div>
+            <div class="finding"><span class="lbl-small">Hallazgo — capa 1 (hash)</span>37 de 334 chunks (11%) quedaron marcados como duplicado exacto, en 16 clusters. El caso cross-archivo más claro: <code>rule_header.md</code>, <code>rule_row.md</code> y <code>rule_custom_field.md</code> (2p-revenue-optimizer-api) comparten un bloque idéntico — sin agruparlos, el split podría separar esos 3 archivos entre train y test con el mismo contenido en ambos lados.</div>
+            <div class="diffbox" style="margin-top:1rem;">
+              <div class="diff-cols">
+                <div class="diff-col before"><span class="diff-tag">antes · 3 archivos, cada uno "independiente"</span>rule_header.md#1
+rule_row.md#1
+rule_custom_field.md#1
+→ mismo hash de contenido</div>
+                <div class="diff-col after"><span class="diff-tag">después · 1 componente conexa</span>rule_custom_field.md#1 = canónico
+rule_header.md#1 → duplicate_of ese id
+rule_row.md#1 → duplicate_of ese id
+los 3 archivos: mismo split, sí o sí</div>
+              </div>
+            </div>
+            <div class="finding" style="margin-top:1rem;"><span class="lbl-small">Hallazgo — capa 2 (embeddings)</span>17 pares casi-duplicados encontrados a umbral 0.9 (tras excluir <code>api_spec</code>: sin esa exclusión aparecían 24, y 7 eran endpoints/schemas distintos de <code>swagger.yaml</code> que solo compartían plantilla). El caso que motivó la capa: <code>rule_header.md</code>/<code>rule_row.md</code> de <code>2p-revenue-optimizer-api</code> tienen una tabla con columnas renombradas entre versiones (<code>created_date</code>→<code>date</code>) — mismo hash imposible, mismo significado real.</div>
+          </div>
+        </div>
+        <div class="io">list[Chunk] → duplicate_of + near_duplicate_pairs + componentes por documento</div>
+      </article>
+
+      <article class="stage">
+        <div class="top-row">
+          <span class="num">5</span>
+          <div class="titles"><span class="filename">splitting.py</span><h3>Split train / val / test</h3></div>
+        </div>
+        <div class="body-grid">
+          <div>
+            <p>Asigna 60/20/20 <b>por proyecto</b> (no global), operando sobre las componentes conexas de dedup.py (nunca las parte). Seed fijo derivado por proyecto (<code>"seed:proyecto"</code>) para reproducibilidad sin correlacionar el orden entre proyectos. Casos de 1 o 2 documentos únicos tienen reglas explícitas, con warnings.</p>
+            <div class="why"><span class="lbl-small">Por qué así</span><p>60/20/20 en vez del clásico 80/10/10: con pocos documentos por proyecto, un test del 10% podría terminar siendo un solo archivo chico, con métricas de altísima varianza. Por proyecto (no global) porque un split global, con solo 10 proyectos, podría dejar alguno — como <code>payment-promise-gateway</code>, rico en reglas de negocio — completamente ausente de train o de test.</p></div>
+            <div class="uses"><span class="lbl-small">Usa</span><div class="chip-row"><span class="chip">random (stdlib, seed determinista)</span></div></div>
+          </div>
+          <div>
+            <div class="finding"><span class="lbl-small">Hallazgo</span><code>payment-promise-gateway</code> tiene 1 solo documento único → va entero a train, sin representación en val/test (warning explícito en <code>split_report.json</code>). Otros 3 proyectos (<code>2p-revenue-optimizer-api</code>, <code>unified-transaction-configs</code>, <code>zenith-keeper</code>) tienen exactamente 2 → 1 a train, 1 a test, ninguno a val.</div>
+            <div class="diffbox" style="margin-top:1rem;">
+              <div class="diff-cols">
+                <div class="diff-col before"><span class="diff-tag">antes · order-workflow-api, 8 documentos únicos</span>doc1, doc2, doc3, doc4, doc5,
+doc6, doc7, doc8 (sin asignar)</div>
+                <div class="diff-col after"><span class="diff-tag">después · 60/20/20 real</span>train: 4 documentos
+val: 2 documentos
+test: 2 documentos</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="io">componentes + seed → doc_id → split</div>
+      </article>
+
+    </div>
+  </section>
+
+  <section class="block" id="etapa-b">
+    <div class="section-head">
+      <h2>Etapa B — build-qa</h2>
+      <div class="note">corpus.jsonl → qa.jsonl. Nunca recalcula el split: cada fila hereda el split de su chunk de origen.</div>
+    </div>
+
+    <div class="stage-list">
+
+      <article class="stage">
+        <div class="top-row">
+          <span class="num">1</span>
+          <div class="titles"><span class="filename">qa_templates.py + qa_llm_generate.py</span><h3>Generación de candidatos — dos métodos, a propósito</h3></div>
+        </div>
+        <p>Hay dos formas de generar un par pregunta-respuesta porque hay dos tipos de fuente muy distintos. Contenido <b>estructurado</b> (una tabla, un endpoint OpenAPI) ya tiene la respuesta ahí, en un campo — extraerla es determinista. Contenido en <b>prosa</b> (reglas de negocio, explicaciones) requiere "entender" texto libre, algo que ningún regex puede hacer de forma confiable — para eso se usa un LLM.</p>
+
+        <div class="method-compare">
+          <div class="method">
+            <span class="mname">Templates (qa_templates.py)</span>
+            <p>Regex sobre un formato de texto <b>que el propio pipeline escribió</b> (parse_openapi.py define exactamente cómo se ve un chunk "Endpoint:" o "Schema:"; una tabla Markdown se parsea por columna). Como ambos lados del contrato los controlamos nosotros, el grounding es perfecto por construcción: la respuesta ES literalmente la celda de la tabla.</p>
+            <p><b>Ejemplo real</b> — tabla <code>rule_custom_field</code>:</p>
+            <div class="diff-col after" style="margin-top:.4rem;"><span class="diff-tag">fuente → Q&amp;A generado</span>fila: | id | bigint | Not null | Auto-increment primary key |
+
+P: ¿Qué tipo de dato tiene `id` en la
+   tabla de `rule_custom_field Table`?
+R: bigint (Auto-increment primary key)
+evidence_span: la fila completa, literal</div>
+          </div>
+          <div class="method">
+            <span class="mname">LLM (qa_llm_generate.py)</span>
+            <p>Llamada a la API de Claude con <b>tool-use forzado</b> (<code>submit_qa_pairs</code>): el system prompt exige una cita literal (<code>evidence_span</code>) por cada par, y pide devolver lista vacía en vez de forzar una pregunta de baja calidad. No se confía ciegamente en la respuesta: <code>qa_grounding.py</code> la vuelve a verificar después.</p>
+            <p><b>Ejemplo real</b> — regla de negocio en prosa:</p>
+            <div class="diff-col after" style="margin-top:.4rem;"><span class="diff-tag">fuente → Q&amp;A generado</span>fuente: "DELETED: Brand has been
+permanently removed (irreversible action)."
+
+P: ¿Es reversible el estado DELETED
+   de una marca?
+R: No, es una acción irreversible.
+(requiere inferir la respuesta, no
+solo copiarla — por eso hace falta LLM)</div>
+          </div>
+        </div>
+
+        <div class="callout tradeoff"><b>Trade-off de correr sin API key</b> <code>build-qa --no-llm</code> (o sin <code>ANTHROPIC_API_KEY</code> configurada) sigue funcionando: se generan igual los pares de tablas/OpenAPI. Pero en esta corrida real, de los 841 candidatos generados, 593 (70%) salieron del LLM contra 248 (30%) de templates — y de las 246 filas finales, 193 (78%) son vía LLM. Sin la API, <b>se pierde casi toda la cobertura de reglas de negocio y explicaciones en prosa</b>, quedando un dataset funcional pero mucho más chico y centrado solo en lo estructurado (tablas y specs).</div>
+
+        <div class="uses" style="margin-top:1rem;"><span class="lbl-small">Usa</span><div class="chip-row"><span class="chip">regex sobre formato propio</span><span class="chip">anthropic SDK — claude-sonnet-5</span><span class="chip">tool-use forzado</span></div></div>
+        <div class="io">CorpusRow → candidatos QAPair</div>
+      </article>
+
+      <article class="stage">
+        <div class="top-row">
+          <span class="num">2</span>
+          <div class="titles"><span class="filename">qa_grounding.py</span><h3>Control de calidad</h3></div>
+        </div>
+        <div class="body-grid">
+          <div>
+            <p>Filtro obligatorio: la evidencia debe ser <b>subcadena literal exacta</b> del chunk fuente (no un match difuso) — el gate anti-alucinación central del dataset. Además: longitud razonable de pregunta/respuesta (8-300 caracteres), y descarte de preguntas casi-duplicadas dentro del mismo proyecto (texto normalizado, primera aparición se conserva).</p>
+            <div class="why"><span class="lbl-small">Por qué así</span><p>Subcadena exacta y no similitud aproximada: un match difuso no prueba nada real, solo mide que el LLM "suena convincente". Comparar casi-duplicados <b>por proyecto</b> (no global) porque preguntas idénticas en dominios distintos (ej. "¿qué sitios soporta?") son coincidencia de fraseo, no redundancia real.</p></div>
+          </div>
+          <div>
+            <div class="finding"><span class="lbl-small">Hallazgo</span>De 841 candidatos generados, 828 (98.5%) pasaron QC — solo 13 se descartaron. El grueso del filtrado real no ocurre acá: el system prompt del LLM (exigir <code>evidence_span</code> desde el origen) ya evita la mayoría de los casos problemáticos antes de que lleguen a este chequeo.</div>
+          </div>
+        </div>
+        <div class="io">candidatos → QualityChecks (qc_passed)</div>
+      </article>
+
+      <article class="stage">
+        <div class="top-row">
+          <span class="num">3</span>
+          <div class="titles"><span class="filename">qa_build.py — tope anti-volumen</span><h3>Límite por documento</h3></div>
+        </div>
+        <div class="body-grid">
+          <div>
+            <p>Máximo 8 pares por documento fuente, repartidos round-robin entre sus chunks (para que el tope no se lo coma el primer chunk) y priorizando, dentro de cada chunk, las respuestas más verificables primero (enum &gt; numérico/booleano &gt; extractiva &gt; generativa).</p>
+            <div class="why"><span class="lbl-small">Por qué así</span><p>Sin este tope, un documento con muchas secciones (un swagger.yaml de 35 endpoints, o un README largo) dominaría el dataset final por volumen bruto, no por densidad real de señal — "más volumen no es mejor" es un criterio explícito del enunciado del desafío.</p></div>
+          </div>
+          <div>
+            <div class="finding"><span class="lbl-small">Hallazgo</span>27 de los 34 documentos con al menos una fila de Q&amp;A terminaron exactamente en el tope de 8 — evidencia de que, sin este límite, esos documentos habrían aportado bastante más volumen del que efectivamente dejaron entrar.</div>
+          </div>
+        </div>
+        <div class="io">candidatos aprobados → qa.jsonl final</div>
+      </article>
+
+    </div>
+  </section>
+
+  <section class="block" id="garantias">
+    <div class="section-head"><h2>Lo que queda garantizado</h2></div>
+    <div class="invariants">
+      <div class="item"><b>Sin fuga entre splits</b>Un fragmento duplicado entre archivos nunca queda repartido entre train y test — se agrupa por componente conexa antes de splitear.</div>
+      <div class="item"><b>Grounding verificable</b>Toda respuesta de Q&amp;A trae una cita textual que se valida como subcadena exacta del chunk — no se confía en que el LLM "dice la verdad".</div>
+      <div class="item"><b>Reproducible de punta a punta</b>Seed fijo, orden determinista de archivos, y conteo de tokens real (tiktoken con encoding vendorizado) — mismo input, mismo resultado, sin depender de red.</div>
+    </div>
+  </section>
+
+  <section class="block" id="datasets">
+    <div class="section-head"><h2>Los dos datasets finales</h2></div>
+    <div class="schema-cols">
+      <div class="schema-panel">
+        <h4>corpus.jsonl · 334 filas</h4>
+        <table class="schema">
+          <tr><td class="field">doc_id / id</td><td>archivo fuente / fila única (doc_id#chunk_index)</td></tr>
+          <tr><td class="field">source_path, section_path</td><td>procedencia exacta hasta el heading</td></tr>
+          <tr><td class="field">text, n_tokens</td><td>contenido del chunk y su conteo real (tiktoken)</td></tr>
+          <tr><td class="field">content_type</td><td>prose · table · code · api_spec</td></tr>
+          <tr><td class="field">duplicate_of, split</td><td>auditoría de dedup y partición train/val/test</td></tr>
+        </table>
+      </div>
+      <div class="schema-panel">
+        <h4>qa.jsonl · 246 filas</h4>
+        <table class="schema">
+          <tr><td class="field">question, answer</td><td>el par generado (template o LLM)</td></tr>
+          <tr><td class="field">evidence_span</td><td>cita literal verificada contra el chunk</td></tr>
+          <tr><td class="field">source_chunk_id</td><td>fila exacta de corpus.jsonl de origen</td></tr>
+          <tr><td class="field">generation_method</td><td>template · llm</td></tr>
+          <tr><td class="field">qc_passed, split</td><td>resultado de QC y split heredado del chunk</td></tr>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="librerias">
+    <div class="section-head">
+      <h2>Librerías utilizadas</h2>
+      <div class="note">Qué es cada una y para qué se usa acá, en palabras simples.</div>
+    </div>
+    <div class="glossary-grid">
+      <div class="gterm"><span class="term">markdown-it-py + mdit-py-plugins</span><p>Lee un archivo Markdown y lo convierte en un árbol navegable (dónde empieza cada título, tabla, bloque de código) en vez de texto plano. El plugin agrega soporte para tablas con formato GitHub. Se eligió sobre alternativas como <code>mistune</code> por tener ese soporte de tablas ya maduro.</p></div>
+      <div class="gterm"><span class="term">beautifulsoup4</span><p>Limpia HTML embebido dentro de los archivos Markdown (por ejemplo un <code>&lt;div&gt;</code> o <code>&lt;details&gt;</code>) y lo deja como texto plano legible, sin las etiquetas.</p></div>
+      <div class="gterm"><span class="term">PyYAML</span><p>Lee archivos <code>.yaml</code>: tanto <code>config/config.yaml</code> (la configuración del pipeline) como los <code>swagger.yaml</code> (las especificaciones OpenAPI de 3 proyectos).</p></div>
+      <div class="gterm"><span class="term">tiktoken</span><p>El tokenizador real (encoding <code>cl100k_base</code>) que mide cuántos "tokens" tiene un texto — la misma unidad que cuenta un modelo de lenguaje, no una aproximación de caracteres. El archivo que necesita para funcionar está guardado dentro del proyecto, así nunca hace falta descargarlo de internet.</p></div>
+      <div class="gterm"><span class="term">sentence-transformers</span><p>Convierte texto en un vector numérico (embedding) que captura su significado — dos textos parecidos en significado quedan cerca en ese espacio, aunque usen palabras distintas. Se usa el modelo <code>all-MiniLM-L6-v2</code> (chico, ~90MB, de propósito general) para la segunda capa de deduplicación. También guardado dentro del proyecto, sin depender de descargarlo.</p></div>
+      <div class="gterm"><span class="term">scikit-learn</span><p>Se usa solo su función <code>cosine_similarity</code>, para medir qué tan parecidos son dos embeddings — el número que se compara contra el umbral de 0.9 para decidir si dos chunks son casi-duplicados.</p></div>
+      <div class="gterm"><span class="term">anthropic (SDK de Claude)</span><p>La librería oficial para llamar a la API de Claude. Se usa para generar preguntas y respuestas a partir de texto en prosa (lo único que un simple patrón de búsqueda no puede "entender" por sí solo).</p></div>
+      <div class="gterm"><span class="term">truststore</span><p>Hace que Python confíe en los certificados de seguridad que ya reconoce el sistema operativo, en vez de solo en una lista propia de Python. Hizo falta porque, en redes de oficina con un proxy que inspecciona el tráfico, las llamadas a la API de Claude fallaban por un certificado que Windows sí conocía pero Python no.</p></div>
+      <div class="gterm"><span class="term">python-dotenv</span><p>Lee el archivo <code>.env</code> local (donde vive la clave de la API de Claude) para no tener que configurar esa clave a mano cada vez que se abre una terminal nueva.</p></div>
+      <div class="gterm"><span class="term">pytest</span><p>El framework que corre los tests automáticos del proyecto — confirma que cada pieza del pipeline (chunking, deduplicación, split, control de calidad) sigue funcionando como se espera después de cualquier cambio.</p></div>
+    </div>
+  </section>
+
+  <footer>
+    Generado a partir de la lectura completa de <span class="mono">src/docs2llm/</span>, <span class="mono">config/config.yaml</span> y los reportes en <span class="mono">data/processed/</span>. El razonamiento detrás de cada decisión (por qué 60/20/20, por qué dedup en dos capas, por qué se abandonó y luego se recuperó tiktoken) está documentado con evidencia ejecutada en <span class="mono">notebooks/diagnostico.ipynb</span>.
+  </footer>
+  <p class="byline-bottom">Lina Marcela Angel Cetina — Challenge MeLi</p>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+  mermaid.initialize({ startOnLoad: true, securityLevel: "loose" });
+</script>
+</body>
+</html>
