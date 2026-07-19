@@ -1,0 +1,109 @@
+{
+  "near_duplicate_check_activo": true,
+  "near_duplicate_threshold": 0.9,
+  "pares_encontrados": 17,
+  "ejemplos": [
+    {
+      "a": "docs_raw/2p-revenue-optimizer-api/latest/guide/pages/table_data_dictionary/rule_header.md#0",
+      "b": "docs_raw/2p-revenue-optimizer-api/latest/guide/pages/table_data_dictionary/rule_row.md#0",
+      "source_path_a": "docs_raw/2p-revenue-optimizer-api/latest/guide/pages/table_data_dictionary/rule_header.md",
+      "source_path_b": "docs_raw/2p-revenue-optimizer-api/latest/guide/pages/table_data_dictionary/rule_row.md"
+    },
+    {
+      "a": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md#2",
+      "b": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md#16",
+      "source_path_a": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md",
+      "source_path_b": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md"
+    },
+    {
+      "a": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md#2",
+      "b": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md#45",
+      "source_path_a": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md",
+      "source_path_b": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md"
+    },
+    {
+      "a": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md#16",
+      "b": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md#38",
+      "source_path_a": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md",
+      "source_path_b": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md"
+    },
+    {
+      "a": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md#16",
+      "b": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md#45",
+      "source_path_a": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md",
+      "source_path_b": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md"
+    },
+    {
+      "a": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md#16",
+      "b": "docs_raw/catalog-portfolio-api/latest/guide/brand-management/README.md#8",
+      "source_path_a": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md",
+      "source_path_b": "docs_raw/catalog-portfolio-api/latest/guide/brand-management/README.md"
+    },
+    {
+      "a": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md#25",
+      "b": "docs_raw/catalog-portfolio-api/latest/guide/brand-management/README.md#7",
+      "source_path_a": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md",
+      "source_path_b": "docs_raw/catalog-portfolio-api/latest/guide/brand-management/README.md"
+    },
+    {
+      "a": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md#38",
+      "b": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md#45",
+      "source_path_a": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md",
+      "source_path_b": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md"
+    },
+    {
+      "a": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md#45",
+      "b": "docs_raw/catalog-portfolio-api/latest/guide/brand-management/README.md#8",
+      "source_path_a": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md",
+      "source_path_b": "docs_raw/catalog-portfolio-api/latest/guide/brand-management/README.md"
+    },
+    {
+      "a": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md#50",
+      "b": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/README.md#8",
+      "source_path_a": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md",
+      "source_path_b": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/README.md"
+    },
+    {
+      "a": "docs_raw/demand-forecast-docs/latest/guide/overview.md#16",
+      "b": "docs_raw/demand-forecast-docs/latest/guide/overview.md#23",
+      "source_path_a": "docs_raw/demand-forecast-docs/latest/guide/overview.md",
+      "source_path_b": "docs_raw/demand-forecast-docs/latest/guide/overview.md"
+    },
+    {
+      "a": "docs_raw/order-workflow-api/5.6.2-hotfix-1/guide/services/bigq.md#0",
+      "b": "docs_raw/order-workflow-api/5.6.2-hotfix-1/guide/services/bigq.md#1",
+      "source_path_a": "docs_raw/order-workflow-api/5.6.2-hotfix-1/guide/services/bigq.md",
+      "source_path_b": "docs_raw/order-workflow-api/5.6.2-hotfix-1/guide/services/bigq.md"
+    },
+    {
+      "a": "docs_raw/payment-promise-gateway/latest/guide/README.md#8",
+      "b": "docs_raw/payment-promise-gateway/latest/guide/README.md#9",
+      "source_path_a": "docs_raw/payment-promise-gateway/latest/guide/README.md",
+      "source_path_b": "docs_raw/payment-promise-gateway/latest/guide/README.md"
+    },
+    {
+      "a": "docs_raw/vendor-stockkeeper-api/0.0.10-stock-consumer/guide/database.md#0",
+      "b": "docs_raw/vendor-stockkeeper-api/0.0.10-stock-consumer/guide/database.md#1",
+      "source_path_a": "docs_raw/vendor-stockkeeper-api/0.0.10-stock-consumer/guide/database.md",
+      "source_path_b": "docs_raw/vendor-stockkeeper-api/0.0.10-stock-consumer/guide/database.md"
+    },
+    {
+      "a": "docs_raw/vendor-stockkeeper-api/0.0.10-stock-consumer/guide/database.md#1",
+      "b": "docs_raw/vendor-stockkeeper-api/0.0.10-stock-consumer/guide/database.md#2",
+      "source_path_a": "docs_raw/vendor-stockkeeper-api/0.0.10-stock-consumer/guide/database.md",
+      "source_path_b": "docs_raw/vendor-stockkeeper-api/0.0.10-stock-consumer/guide/database.md"
+    },
+    {
+      "a": "docs_raw/vendor-stockkeeper-api/0.0.10-stock-consumer/guide/important.md#3",
+      "b": "docs_raw/vendor-stockkeeper-api/0.0.10-stock-consumer/guide/important.md#4",
+      "source_path_a": "docs_raw/vendor-stockkeeper-api/0.0.10-stock-consumer/guide/important.md",
+      "source_path_b": "docs_raw/vendor-stockkeeper-api/0.0.10-stock-consumer/guide/important.md"
+    },
+    {
+      "a": "docs_raw/zenith-keeper/1.1.6/guide/use-cases.md#2",
+      "b": "docs_raw/zenith-keeper/1.1.6/guide/use-cases.md#3",
+      "source_path_a": "docs_raw/zenith-keeper/1.1.6/guide/use-cases.md",
+      "source_path_b": "docs_raw/zenith-keeper/1.1.6/guide/use-cases.md"
+    }
+  ]
+}

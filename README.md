@@ -30,10 +30,9 @@ Correr los tests:
 pytest tests/ -v
 ```
 
-Abrir el notebook de evidencia (opcional, requiere dependencias extra):
+Abrir el notebook de evidencia (mismo `requirements.txt`, ya instalado arriba):
 
 ```powershell
-pip install -r requirements-notebook.txt
 jupyter notebook notebooks/diagnostico.ipynb
 ```
 
@@ -52,7 +51,7 @@ parse_markdown.py  AST de Markdown -> árbol Section/Block
 parse_openapi.py   swagger.yaml -> Section/Block (paths + schemas)
 parse_units.py     dataclasses compartidas Section/Block
 chunking.py        bin-packing heading-aware -> Chunk (nunca parte tablas/código)
-dedup.py           hash exacto a nivel de bloque + componentes conexas entre archivos
+dedup.py           hash exacto + embeddings (near-duplicates) + componentes conexas entre archivos
 splitting.py       asigna train/val/test por proyecto, por componente conexa
 corpus_build.py    orquesta discovery->parse->chunk->dedup->split -> corpus.jsonl
 qa_templates.py    Q&A determinista desde tablas/OpenAPI
@@ -64,7 +63,7 @@ qa_build.py        orquesta templates+LLM -> QC -> tope anti-volumen -> qa.jsonl
 
 ## Qué hace el pipeline, en 2 etapas
 
-**Etapa A — `build-corpus`**: resuelve qué carpeta de versión usar por proyecto (`config/config.yaml`, clave `canonical_sources` — decisión curada y justificada, no automática — ver notebook, sección 1), parsea Markdown vía AST (`markdown-it-py`) y OpenAPI vía parser dedicado, normaliza (arregla encabezados rotos, corrige un bug de doble-escape HTML, colapsa ruido de diagramas Mermaid), arma chunks heading-aware sin partir tablas/código, deduplica por hash exacto (a nivel de bloque, no de chunk ya empaquetado — ver notebook, sección 6), y asigna train/val/test agrupando por documentos que comparten contenido duplicado (ver notebook, sección 7), para que ningún fragmento repetido quede en dos splits a la vez.
+**Etapa A — `build-corpus`**: resuelve qué carpeta de versión usar por proyecto (`config/config.yaml`, clave `canonical_sources` — decisión curada y justificada, no automática — ver notebook, sección 1), parsea Markdown vía AST (`markdown-it-py`) y OpenAPI vía parser dedicado, normaliza (arregla encabezados rotos, corrige un bug de doble-escape HTML, colapsa ruido de diagramas Mermaid), arma chunks heading-aware sin partir tablas/código, deduplica en dos capas —hash exacto a nivel de bloque (no de chunk ya empaquetado — ver notebook, sección 6) y embeddings semánticos para duplicados aproximados (contenido que cambió de texto pero no de significado)—, y asigna train/val/test agrupando por documentos que comparten contenido duplicado, exacto o aproximado (ver notebook, sección 7), para que ningún fragmento repetido quede en dos splits a la vez.
 
 **Etapa B — `build-qa`**: lee `corpus.jsonl` (nunca recalcula el split). Genera candidatos con dos métodos —templates deterministas sobre tablas/OpenAPI (grounding garantizado por construcción) y la API de Claude sobre prosa/reglas de negocio (con `evidence_span` obligatorio)—, valida cada candidato (evidencia verificada como subcadena literal, longitud razonable, sin preguntas casi-duplicadas), y aplica un tope anti-volumen por documento para que un archivo con muchas secciones no domine el dataset.
 
@@ -79,14 +78,13 @@ Ambas trazan cada fila hasta su origen exacto (`source_path` + `section_path`), 
 ## Decisiones clave (resumen — detalle completo en `notebooks/diagnostico.ipynb`)
 
 - **"latest" no es confiable como señal de versión más reciente**: se verificó con hashes que en 1 de los 4 proyectos con múltiples versiones, "latest" era la copia más *vieja*. Se optó por una tabla de curación explícita con la razón de cada elección, no una heurística automática.
-- **Deduplicación en dos capas**: exacta por hash (a nivel de bloque atómico, no de chunk ya empaquetado — un fragmento repetido que queda mezclado con contexto distinto en cada archivo no se detecta si se compara el chunk final) y componentes conexas entre archivos, para que el split no separe contenido duplicado entre train y test.
+- **Deduplicación en dos capas**: exacta por hash (a nivel de bloque atómico, no de chunk ya empaquetado — un fragmento repetido que queda mezclado con contexto distinto en cada archivo no se detecta si se compara el chunk final) y aproximada por embeddings (`sentence-transformers`, modelo `all-MiniLM-L6-v2` vendorizado en `vendor/sentence_transformers_cache/`, mismo patrón que `tiktoken`) para contenido que cambia de texto pero no de significado — el caso real es `2p-revenue-optimizer-api`, donde una tabla tiene columnas renombradas entre versiones (`created_date`→`date`). El umbral de similitud (0.9) se validó contra el corpus real: los chunks `api_spec` quedan excluidos de esta capa porque su formato fijo (ver `parse_openapi.py`) hace que operaciones genuinamente distintas den similitud alta solo por compartir plantilla, no contenido repetido. Ambas capas alimentan las mismas componentes conexas entre archivos, para que el split no separe contenido duplicado (exacto o aproximado) entre train y test.
 - **Split 60/20/20 por proyecto** (no global): con 10 proyectos, un split global podría dejar alguno entero fuera de train o test. Se aloca dentro de cada proyecto, con warnings explícitos cuando un proyecto no alcanza para tener representación en los 3 splits.
 - **Q&A híbrido**: templates para contenido estructurado (grounding gratis) + LLM para prosa (grounding verificado con cita textual obligatoria).
 - **`tiktoken` con encoding vendorizado**: se usa el tokenizador real (`cl100k_base`) para dimensionar chunks. La primera vez que se probó, la descarga del archivo de encoding falló por un proxy de inspección TLS (ver notebook, sección 5) y se reemplazó por una aproximación de caracteres/token; luego se identificó que el mismo fix ya usado para la API de Claude (`truststore`) también resuelve esa descarga, y se optó por ir un paso más allá: el archivo de encoding (~1.7MB) quedó vendorizado en `vendor/tiktoken_cache/`, así el conteo de tokens es exacto y el pipeline sigue sin depender de la red en ningún punto. Sin `truststore`: la API de Claude fallaba por un problema de certificados TLS en redes con proxy de inspección (ver notebook, sección 8).
 
-## Limitaciones conocidas (aceptadas, no descubiertas tarde)
+## Limitaciones conocidas
 
 - La detección de idioma es heurística (conteo de stopwords), no un clasificador robusto.
 - Los templates de OpenAPI describen solo 1 nivel de propiedades anidadas en schemas complejos.
-- El extra de deduplicación por embeddings (near-duplicates semánticos) no está implementado — el MVP cubre duplicados exactos, que es donde se encontró la mayor parte de la duplicación real en `docs_raw/`.
 

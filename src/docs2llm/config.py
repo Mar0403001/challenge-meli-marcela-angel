@@ -43,6 +43,18 @@ CONFIG_PATH = CONFIG_DIR / "config.yaml"
 TIKTOKEN_CACHE_DIR = REPO_ROOT / "vendor" / "tiktoken_cache"
 os.environ.setdefault("TIKTOKEN_CACHE_DIR", str(TIKTOKEN_CACHE_DIR))
 
+# Mismo patron que arriba, para el modelo de embeddings que usa dedup.py para
+# detectar duplicados aproximados (near-duplicates): el modelo completo
+# (all-MiniLM-L6-v2, ~90MB) esta guardado dentro del repo en vez de descargarse de
+# Hugging Face la primera vez que se usa -- se comprobo que esa descarga fallaba
+# por el mismo problema de certificados que afectaba a la API de Claude y a
+# tiktoken (ver requirements.txt). HF_HUB_OFFLINE=1 es una segunda capa de
+# seguridad: aunque el codigo ya carga el modelo desde una ruta local (no desde un
+# nombre de repo de Hugging Face), esta variable evita que la libreria intente
+# cualquier llamada de red por su cuenta (por ejemplo, para revisar actualizaciones).
+SENTENCE_TRANSFORMERS_MODEL_DIR = REPO_ROOT / "vendor" / "sentence_transformers_cache" / "all-MiniLM-L6-v2"
+os.environ.setdefault("HF_HUB_OFFLINE", "1")
+
 
 def load_config_yaml(path: Path | None = None) -> dict:
     """Lee config/config.yaml tal cual, sin procesar (un diccionario con las claves

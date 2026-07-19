@@ -1,12 +1,18 @@
-"""Tests de dedup.py: hash exacto (con normalizacion de espacios/mayusculas) y
-componentes conexas entre archivos que comparten contenido duplicado.
+"""Tests de dedup.py: hash exacto (con normalizacion de espacios/mayusculas),
+duplicados aproximados por embeddings, y componentes conexas entre archivos que
+comparten contenido duplicado (exacto o aproximado).
 """
 
 from __future__ import annotations
 
 import dataclasses
 
-from docs2llm.dedup import assign_duplicate_of, compute_content_hash, file_duplicate_components
+from docs2llm.dedup import (
+    assign_duplicate_of,
+    compute_content_hash,
+    file_duplicate_components,
+    find_near_duplicate_pairs,
+)
 
 
 @dataclasses.dataclass
@@ -19,6 +25,8 @@ class _Row:
     doc_id: str
     content_hash_sha256: str
     duplicate_of: str | None = None
+    text: str = ""
+    content_type: str = "prose"
 
 
 def test_hash_normaliza_espacios_y_mayusculas():
@@ -100,3 +108,63 @@ def test_file_duplicate_components_determinista_entre_corridas():
     print(f"[test] orden invertido: {result_2}")
 
     assert result_1 == result_2, "el resultado no deberia depender del orden de entrada de las filas"
+
+
+# --- Duplicados aproximados (near-duplicates) por embeddings ------------------------
+# Estos tests SI cargan el modelo real (vendorizado en
+# vendor/sentence_transformers_cache/) -- es chico y no necesita red, asi que correr
+# el modelo de verdad (en vez de un stub) es mas representativo que simularlo, con
+# un costo de tiempo bajo (unos pocos segundos).
+
+
+def test_columnas_renombradas_se_detectan_como_near_duplicate():
+    """El caso real que motivo esta funcion: 2p-revenue-optimizer-api tiene una
+    tabla con columnas renombradas entre versiones (created_date -> date) -- mismo
+    significado, hash distinto. La similitud semantica tiene que detectarlo."""
+    tabla_v1 = "| created_date | productive_date | status |\n|---|---|---|\n| 2024-01-01 | 2024-01-05 | ok |"
+    tabla_v2 = "| date | version | status |\n|---|---|---|\n| 2024-01-01 | 2024-01-05 | ok |"
+    texto_no_relacionado = "El servidor web configurado en este proyecto es nginx, con balanceo de carga round-robin."
+
+    rows = [
+        _Row(id="a#0", doc_id="a.md", content_hash_sha256=compute_content_hash(tabla_v1), text=tabla_v1, content_type="table"),
+        _Row(id="b#0", doc_id="b.md", content_hash_sha256=compute_content_hash(tabla_v2), text=tabla_v2, content_type="table"),
+        _Row(id="c#0", doc_id="c.md", content_hash_sha256=compute_content_hash(texto_no_relacionado), text=texto_no_relacionado, content_type="prose"),
+    ]
+
+    pares = find_near_duplicate_pairs(rows, threshold=0.6)
+    print(f"\n[test] pares casi-duplicados encontrados: {pares}")
+
+    assert ("a#0", "b#0") in pares, "las dos versiones de la tabla (con columnas renombradas) deben detectarse como casi-duplicadas"
+    assert not any("c#0" in par for par in pares), "el texto sin relacion no deberia aparecer en ningun par"
+
+
+def test_duplicado_exacto_no_se_repite_como_near_duplicate():
+    """Un par que ya es duplicado EXACTO (mismo hash) no debe aparecer tambien en
+    find_near_duplicate_pairs -- ya esta cubierto por assign_duplicate_of, listarlo
+    de nuevo aca seria redundante."""
+    texto = "Contenido identico, palabra por palabra, en dos archivos distintos."
+    rows = [
+        _Row(id="a#0", doc_id="a.md", content_hash_sha256=compute_content_hash(texto), text=texto),
+        _Row(id="b#0", doc_id="b.md", content_hash_sha256=compute_content_hash(texto), text=texto),
+    ]
+
+    pares = find_near_duplicate_pairs(rows, threshold=0.9)
+    print(f"\n[test] pares (deberia ser vacio, ya es duplicado exacto): {pares}")
+
+    assert pares == []
+
+
+def test_near_duplicate_pairs_tambien_unen_componentes_para_el_split():
+    """file_duplicate_components debe unir documentos por near_duplicate_pairs
+    ademas de por hash exacto -- es la conexion real con splitting.py."""
+    rows = [
+        _Row(id="a#0", doc_id="a.md", content_hash_sha256=compute_content_hash("texto A")),
+        _Row(id="b#0", doc_id="b.md", content_hash_sha256=compute_content_hash("texto B")),
+        _Row(id="c#0", doc_id="c.md", content_hash_sha256=compute_content_hash("texto C, sin relacion")),
+    ]
+
+    components = file_duplicate_components(rows, near_duplicate_pairs=[("a#0", "b#0")])
+    print(f"\n[test] componentes con near-duplicate pair (a,b): {components}")
+
+    assert components["a.md"] == components["b.md"], "a.md y b.md deben unirse por el par casi-duplicado"
+    assert components["c.md"] != components["a.md"], "c.md no deberia unirse a nada, no comparte ningun par"

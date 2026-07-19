@@ -88,7 +88,7 @@ def test_integracion_corpus_real_sin_fugas_entre_splits():
     print("\n[test] corriendo build_corpus_rows contra docs_raw/ real (esto imprime todo el pipeline)...")
     sources = load_canonical_sources()
     pipeline_config = load_pipeline_config()
-    rows, _ = build_corpus_rows(sources, pipeline_config)
+    rows, _, _ = build_corpus_rows(sources, pipeline_config)
     print(f"[test] corpus real: {len(rows)} filas generadas")
 
     assert len(rows) > 0, "el corpus real no deberia estar vacio"

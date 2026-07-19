@@ -58,20 +58,48 @@ pipeline:
   chunking:
     # Objetivo blando de tamano de chunk: no fuerza fusionar secciones tematicamente
     # distintas solo para "llenar" el chunk (docs_raw son mayormente secciones cortas).
+    # 300 tokens cae dentro del rango que la practica de chunking para RAG/retrieval
+    # suele recomendar (aprox. 128-512 tokens por chunk, segun guias de chunking de
+    # Pinecone/LangChain/Unstructured, entre otras) -- un punto medio que deja
+    # contexto suficiente para responder una pregunta sin arrastrar contenido de otra
+    # seccion. No es un numero ajustado con un experimento propio de este corpus (a
+    # diferencia de near_duplicate_threshold, mas abajo, que si lo es).
     target_tokens: 300
     # Tope duro. Un bloque atomico que lo supera por si solo cae al fallback de
     # ventana con overlap -- el unico caso donde de verdad se corta texto.
     max_tokens: 512
-    # Solapamiento SOLO para ese fallback de ventana (~15% de max_tokens); entre
-    # chunks de secciones distintas no hay overlap (agregaria redundancia).
+    # Solapamiento SOLO para ese fallback de ventana. 60 es aprox. 12% de max_tokens,
+    # dentro del rango de 10-20% que tambien es convencion habitual en chunking para
+    # RAG (ver la nota de target_tokens arriba) -- evita perder contexto justo en el
+    # corte, sin agregar tanta redundancia como para inflar el conteo de tokens.
     overlap_tokens: 60
 
   dedup:
-    # Extra opcional (ver requirements-extra.txt); false por default para que
-    # build-corpus funcione completo sin sentence-transformers/torch instalados.
-    near_duplicate_check: false
-    # Umbral tipico reportado en literatura de dedup de corpus (ej. C4/RefinedWeb);
-    # no afinado especificamente para este corpus por ser un extra opcional.
+    # Segunda capa de deduplicacion, ademas del hash exacto: compara embeddings de
+    # sentence-transformers (modelo all-MiniLM-L6-v2, vendorizado en
+    # vendor/sentence_transformers_cache/, ver dedup.py) para agrupar chunks que
+    # dicen "casi" lo mismo aunque el texto haya cambiado (ej. una tabla con una
+    # columna renombrada entre versiones, ver 2p-revenue-optimizer-api). El enfoque
+    # general (embeddings + similitud coseno para deduplicacion semantica de un
+    # corpus de entrenamiento) tiene precedente publicado -- ver SemDeDup (Abbas et
+    # al., 2023, Meta AI, arXiv:2303.09540) -- pero ese paper no fija un umbral
+    # universal: el suyo esta calibrado para embeddings de imagen/texto a escala
+    # web, con un modelo y un corpus distintos a este. Por eso el umbral concreto de
+    # este proyecto (ver near_duplicate_threshold, abajo) se calibro de forma
+    # empirica contra docs_raw real, en vez de copiar un numero de un paper que usa
+    # un modelo y un corpus distintos.
+    near_duplicate_check: true
+    # Umbral de similitud coseno para considerar dos chunks como casi-duplicados.
+    # Calibracion empirica contra el corpus real (no un valor de la literatura, ver
+    # el comentario de arriba): en pruebas directas, pares de contenido realmente
+    # relacionado (ej. la tabla de 2p-revenue-optimizer-api con columnas renombradas)
+    # dieron similitud ~0.75-0.95, contra ~0.1-0.3 para texto sin relacion -- 0.9
+    # separa bien los dos grupos. A ese umbral, contra las 334 filas reales del
+    # corpus, aparecieron 24 pares; 7 resultaron ser operaciones/schemas de OpenAPI
+    # genuinamente distintos que solo compartian plantilla (ver
+    # _CONTENT_TYPES_SIN_NEAR_DUPLICATE_CHECK en dedup.py) -- excluir "api_spec" de
+    # esta capa dejo 17 pares, los 17 inspeccionados a mano y confirmados como
+    # duplicados reales.
     near_duplicate_threshold: 0.9
 
   split:

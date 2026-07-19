@@ -101,6 +101,14 @@ def generate_llm_qa(
 
     response = client.messages.create(
         model=model,
+        # 1536 es un presupuesto de salida, no un limite de entrada: tiene que
+        # alcanzar para el JSON estructurado de hasta `max_pairs` pares (question +
+        # answer + evidence_span + answer_type cada uno, tipicamente 100-200 tokens
+        # por par en este corpus) sin cortar la respuesta a la mitad. Se eligio con
+        # margen sobre esa estimacion en vez de calcularlo exacto por llamada: un
+        # limite generoso y fijo es mas simple, y el costo de sobrar tokens de
+        # salida no usados es minimo comparado con el riesgo de una respuesta
+        # truncada (que rompería el parseo del tool_use).
         max_tokens=1536,
         system=_SYSTEM_PROMPT,
         tools=[_QA_TOOL],

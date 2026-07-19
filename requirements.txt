@@ -1,7 +1,11 @@
-# Dependencias del camino principal (pip install -r requirements.txt).
-# Pineadas a una version concreta para que "reproducible desde cero" sea literal:
-# quien clone el repo dentro de un año instala exactamente lo mismo que yo probe,
-# no "lo que sea que resuelva pip ese dia".
+# Todas las dependencias del proyecto en un unico archivo: el pipeline
+# (build-corpus / build-qa), sus tests, y el notebook de evidencia
+# (notebooks/diagnostico.ipynb). Pineadas a una version concreta para que
+# "reproducible desde cero" sea literal: quien clone el repo dentro de un año
+# instala exactamente lo mismo que se probo, no "lo que sea que resuelva pip ese dia".
+#
+#   pip install -r requirements.txt
+#   pip install -e .
 
 # Parseo de Markdown a un arbol (AST) navegable, en vez de regex sobre texto crudo.
 # Se eligio sobre 'mistune' por tener plugins maduros para tablas GFM (ver mdit-py-plugins).
@@ -30,13 +34,27 @@ anthropic==0.40.0
 # de ejecucion.
 tiktoken==0.13.0
 
+# Deduplicacion en dos capas (ver dedup.py): hash exacto para contenido identico, y
+# embeddings de sentence-transformers para duplicados aproximados -- contenido que
+# dice "casi" lo mismo pero cambio de texto (ej. una tabla con una columna
+# renombrada entre versiones, ver 2p-revenue-optimizer-api en config/config.yaml).
+# El modelo (all-MiniLM-L6-v2, ~90MB) esta vendorizado en
+# vendor/sentence_transformers_cache/ (ver docs2llm/config.py,
+# SENTENCE_TRANSFORMERS_MODEL_DIR), mismo patron que tiktoken: se guarda en el repo
+# para que build-corpus nunca dependa de la red. Trae scikit-learn (para la
+# similitud coseno) y torch (motor del modelo) como dependencias transitivas.
+sentence-transformers==3.0.1
+
 # Hace que Python valide certificados TLS usando el almacen de certificados NATIVO
 # del sistema operativo, en vez del bundle propio que trae la libreria `certifi`.
 # Se agrego tras un fallo real: en redes corporativas/sandboxed con un proxy de
 # inspeccion TLS (certificado propio instalado en el SO pero no en el bundle de
 # certifi), llamadas a la API de Claude fallaban con
 # "SSL: CERTIFICATE_VERIFY_FAILED: unable to get local issuer certificate" aunque
-# `curl` (que si usa el almacen del SO) llegaba sin problema al mismo host. Ver
+# `curl` (que si usa el almacen del SO) llegaba sin problema al mismo host. El
+# mismo problema (y el mismo arreglo) afecta la descarga inicial del modelo de
+# sentence-transformers y del archivo de encoding de tiktoken -- por eso se activa
+# antes de cualquier llamada de red, no solo antes de la API de Claude. Ver
 # notebooks/diagnostico.ipynb (seccion 8) para el diagnostico completo. Se activa
 # en cli.py antes de cualquier llamada de red.
 truststore==0.10.4
@@ -48,3 +66,18 @@ python-dotenv==1.0.1
 # Framework de tests. Se usa en particular para test_split_no_leakage.py,
 # que verifica que el split no tenga fugas de datos (el invariante mas critico del pipeline).
 pytest==8.3.3
+
+# --- Dependencias de notebooks/diagnostico.ipynb ------------------------------------
+# El notebook que documenta, con evidencia ejecutada en vivo, el porque de cada
+# decision del pipeline (reemplaza a un DECISIONS.md estatico). No las usa el CLI
+# (build-corpus / build-qa), solo hace falta abrirlas para correr el notebook:
+#   jupyter notebook notebooks/diagnostico.ipynb
+
+ipykernel==7.3.0
+nbformat==5.10.4
+nbclient==0.11.0
+notebook==7.6.0
+# Version 3.0.3 (no 2.2.3): 2.2.3 no tiene wheel prebuilt para Python 3.14 (release
+# muy reciente) y falla al compilar (requiere Meson + Visual Studio build tools) --
+# mismo patron que el ajuste de tiktoken mas arriba (ver notebook, seccion 5).
+pandas==3.0.3

@@ -95,10 +95,11 @@ def _parse_file_into_sections(file: SourceFile) -> list:
 
 def build_corpus_rows(
     canonical_sources: dict[str, ProjectSource], pipeline_config: PipelineConfig
-) -> tuple[list[CorpusRow], dict]:
+) -> tuple[list[CorpusRow], dict, list[tuple[str, str]]]:
     """Conecta todo el pipeline (leer -> armar chunks -> deduplicar -> dividir en
-    splits) y devuelve las filas finales de corpus.jsonl, junto con el reporte del
-    split por proyecto.
+    splits) y devuelve las filas finales de corpus.jsonl, el reporte del split por
+    proyecto, y los pares de chunks casi-duplicados encontrados (vacio si
+    `pipeline_config.dedup.near_duplicate_check` esta apagado).
 
     Por que se hace en 2 pasadas (ver el bucle mas abajo): la primera pasada lee
     TODOS los archivos, para detectar que bloques se repiten en el corpus
@@ -189,7 +190,13 @@ def build_corpus_rows(
     # -- por eso corre despues del bucle de arriba, no adentro de el.
     print(f"\n[build-corpus] deduplicando {len(rows)} chunks...")
     dedup.assign_duplicate_of(rows)
-    components = dedup.file_duplicate_components(rows)
+
+    near_duplicate_pairs: list[tuple[str, str]] = []
+    if pipeline_config.dedup.near_duplicate_check:
+        print("[build-corpus] buscando duplicados aproximados (embeddings)...")
+        near_duplicate_pairs = dedup.find_near_duplicate_pairs(rows, pipeline_config.dedup.near_duplicate_threshold)
+
+    components = dedup.file_duplicate_components(rows, near_duplicate_pairs=near_duplicate_pairs)
 
     print(f"\n[build-corpus] asignando splits para {len(project_doc_ids)} proyectos...")
     doc_id_to_split, split_report = splitting.assign_splits(
@@ -203,4 +210,4 @@ def build_corpus_rows(
         row.split = doc_id_to_split[row.doc_id]
 
     print(f"[build-corpus] listo: {len(rows)} filas finales\n")
-    return rows, split_report
+    return rows, split_report, near_duplicate_pairs

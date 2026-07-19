@@ -68,10 +68,11 @@ def _write_json(data: dict, path: Path) -> None:
 
 def cmd_build_corpus(args: argparse.Namespace) -> None:
     """Subcomando `build-corpus`: corre el pipeline completo de corpus_build.py y
-    escribe corpus.jsonl + manifest.json + dedup_report.json + split_report.json."""
+    escribe corpus.jsonl + manifest.json + dedup_report.json + near_dedup_report.json
+    + split_report.json."""
     sources = load_canonical_sources()
     pipeline_config = load_pipeline_config()
-    rows, split_report = build_corpus_rows(sources, pipeline_config)
+    rows, split_report, near_duplicate_pairs = build_corpus_rows(sources, pipeline_config)
 
     out_dir = Path(args.out_dir)
     _write_jsonl(rows, out_dir / "corpus.jsonl")
@@ -93,6 +94,23 @@ def cmd_build_corpus(args: argparse.Namespace) -> None:
         ],
     }
     _write_json(dedup_report, out_dir / "dedup_report.json")
+
+    rows_by_id = {r.id: r for r in rows}
+    near_dedup_report = {
+        "near_duplicate_check_activo": pipeline_config.dedup.near_duplicate_check,
+        "near_duplicate_threshold": pipeline_config.dedup.near_duplicate_threshold,
+        "pares_encontrados": len(near_duplicate_pairs),
+        "ejemplos": [
+            {
+                "a": id_a,
+                "b": id_b,
+                "source_path_a": rows_by_id[id_a].source_path,
+                "source_path_b": rows_by_id[id_b].source_path,
+            }
+            for id_a, id_b in near_duplicate_pairs[:20]
+        ],
+    }
+    _write_json(near_dedup_report, out_dir / "near_dedup_report.json")
 
     manifest = {
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
