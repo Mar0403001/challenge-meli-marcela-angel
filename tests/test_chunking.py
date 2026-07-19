@@ -25,10 +25,13 @@ def test_tabla_mas_grande_que_target_pero_bajo_max_no_se_parte():
     por debajo de max_tokens (el tope DURO) debe seguir siendo un solo chunk -- no
     hay que partirla solo porque ya paso el objetivo blando."""
     tabla = "| a | b |\n|---|---|\n" + "\n".join(f"| {i} | v{i} |" for i in range(6))
-    assert _CFG.target_tokens < _count_tokens(tabla) < _CFG.max_tokens, "el tamano (en tokens reales) de la tabla de prueba debe quedar entre target y max para que el test tenga sentido"
+    n_tok = _count_tokens(tabla)
+    print(f"\n[test] tabla mide {n_tok} tokens (target={_CFG.target_tokens}, max={_CFG.max_tokens})")
+    assert _CFG.target_tokens < n_tok < _CFG.max_tokens, "el tamano (en tokens reales) de la tabla de prueba debe quedar entre target y max para que el test tenga sentido"
     section = Section(heading="Tabla", level=1, section_path=("Tabla",), blocks=[_block(tabla, content_type="table")])
 
     chunks = chunk_sections([section], _CFG)
+    print(f"[test] resultado: {len(chunks)} chunk(s), content_type={chunks[0].content_type if chunks else None}")
 
     assert len(chunks) == 1, "una tabla atomica bajo max_tokens no debe partirse solo por superar el target blando"
     assert chunks[0].text == tabla
@@ -41,9 +44,11 @@ def test_tabla_oversized_permite_ventana_como_ultimo_recurso():
     cae al mismo fallback de ventana que cualquier otro bloque oversized. Es una
     excepcion documentada (regla 3 del modulo), no una violacion silenciosa."""
     tabla_gigante = "| a | b |\n|---|---|\n" + "\n".join(f"| {i} | valor_largo_{i} |" for i in range(40))
+    print(f"\n[test] tabla_gigante mide {_count_tokens(tabla_gigante)} tokens (max={_CFG.max_tokens})")
     section = Section(heading="Tabla", level=1, section_path=("Tabla",), blocks=[_block(tabla_gigante, content_type="table")])
 
     chunks = chunk_sections([section], _CFG)
+    print(f"[test] resultado: {len(chunks)} ventanas, n_tokens por ventana: {[c.n_tokens for c in chunks]}")
 
     assert len(chunks) > 1, "una tabla que excede max_tokens por si sola debe usar el fallback de ventana"
     assert all(c.content_type == "table" for c in chunks)
@@ -55,10 +60,13 @@ def test_bloque_oversized_cae_a_ventana_con_overlap():
     docs_raw real) debe partirse en ventanas solapadas -- el unico camino del
     pipeline donde se corta texto a la mitad."""
     texto_gigante = "palabra " * 100  # ~100 tokens reales, por encima de max_tokens=80
-    assert _count_tokens(texto_gigante) > _CFG.max_tokens, "el texto de prueba debe superar max_tokens para que el test tenga sentido"
+    n_tok = _count_tokens(texto_gigante)
+    print(f"\n[test] texto_gigante mide {n_tok} tokens (max={_CFG.max_tokens})")
+    assert n_tok > _CFG.max_tokens, "el texto de prueba debe superar max_tokens para que el test tenga sentido"
     section = Section(heading="Gigante", level=1, section_path=("Gigante",), blocks=[_block(texto_gigante)])
 
     chunks = chunk_sections([section], _CFG)
+    print(f"[test] resultado: {len(chunks)} ventanas, n_tokens por ventana: {[c.n_tokens for c in chunks]}")
 
     assert len(chunks) > 1, "un bloque oversized debe generar mas de un chunk via ventana"
     for c in chunks:
@@ -79,6 +87,7 @@ def test_secciones_chicas_se_fusionan_con_la_siguiente():
     )
 
     chunks = chunk_sections([chica, grande], _CFG)
+    print(f"\n[test] resultado: {len(chunks)} chunk(s) -> {[c.text[:40] + '...' for c in chunks]}")
 
     assert len(chunks) == 1, "la seccion chica debia fusionarse con la siguiente, no emitirse sola"
     assert "Hola." in chunks[0].text
@@ -98,6 +107,7 @@ def test_seccion_api_spec_nunca_se_fusiona_aunque_sea_chica():
     )
 
     chunks = chunk_sections([schema_chico, endpoint], _CFG)
+    print(f"\n[test] resultado: {len(chunks)} chunks, section_paths: {[c.section_path for c in chunks]}")
 
     assert len(chunks) == 2, "las dos secciones api_spec deben quedar en chunks separados, nunca fusionadas"
     assert chunks[0].section_path == ("swagger.yaml", "schemas", "Zones")
@@ -107,6 +117,7 @@ def test_seccion_api_spec_nunca_se_fusiona_aunque_sea_chica():
 def test_placeholder_se_marca_low_signal():
     section = Section(heading="TODO", level=1, section_path=("Seccion", "TODO"), blocks=[_block("TO DO.")])
     chunks = chunk_sections([section], _CFG)
+    print(f"\n[test] resultado: is_low_signal={chunks[0].is_low_signal}")
     assert len(chunks) == 1
     assert chunks[0].is_low_signal is True
 
@@ -126,6 +137,8 @@ def test_bloque_duplicado_se_aisla_en_su_propio_chunk():
 
     chunks_sin_dedup = chunk_sections([section], _CFG)
     chunks_con_dedup = chunk_sections([section], _CFG, duplicate_block_hashes=frozenset({hash_repetido}))
+    print(f"\n[test] sin marcar hash: {len(chunks_sin_dedup)} chunk(s)")
+    print(f"[test] marcando hash: {len(chunks_con_dedup)} chunk(s) -> {[c.text[:30] for c in chunks_con_dedup]}")
 
     # Sin el hash marcado, el bin-packing normal fusiona el fragmento con al menos
     # uno de sus vecinos (no queda solo) -- es el comportamiento que se quiere
@@ -144,6 +157,7 @@ def test_n_chunks_in_doc_y_chunk_index_son_consistentes():
     s2 = Section(heading="B", level=1, section_path=("B",), blocks=[_block("Contenido de la segunda seccion, tambien con texto suficiente.")])
 
     chunks = chunk_sections([s1, s2], _CFG)
+    print(f"\n[test] resultado: {len(chunks)} chunks, chunk_index={[c.chunk_index for c in chunks]}, n_chunks_in_doc={[c.n_chunks_in_doc for c in chunks]}")
 
     assert len(chunks) >= 2
     assert all(c.n_chunks_in_doc == len(chunks) for c in chunks)

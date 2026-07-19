@@ -139,7 +139,19 @@ def normalize_markdown_text(text: str) -> str:
     pasa en este corpus, pero es la relacion segura), el resto de pasos ya trabajen
     sobre fences bien delimitados.
     """
+    antes = text
     text = fix_broken_atx_headings(text)
+    if text != antes:
+        print("  [normalize] encabezados ATX rotos corregidos")
+
+    antes = text
     text = unescape_html_entities_in_code_fences(text)
+    if text != antes:
+        print("  [normalize] entidades HTML doble-escapadas revertidas dentro de bloques de codigo")
+
+    antes = text
     text = collapse_duplicate_mermaid_style_lines(text)
+    if text != antes:
+        print("  [normalize] lineas de estilo Mermaid repetidas colapsadas")
+
     return text

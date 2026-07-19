@@ -235,4 +235,7 @@ def parse_openapi_sections(text: str) -> list[Section]:
             )
         )
 
+    n_operaciones = sum(1 for s in sections if s.section_path[1:2] == ("paths",))
+    n_schemas = sum(1 for s in sections if s.section_path[1:2] == ("schemas",))
+    print(f"  [parse_openapi] {n_operaciones} operaciones, {n_schemas} schemas")
     return sections

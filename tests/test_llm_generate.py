@@ -37,6 +37,9 @@ def test_extrae_pares_validos_del_tool_use():
         project="traffic-gate-api", section_path="Reglas > Scope Front", chunk_text="...",
         max_pairs=3, model="claude-sonnet-5", client=client,
     )
+    print(f"\n[test] pares extraidos: {len(pairs)}")
+    for p in pairs:
+        print(f"  - question={p.question!r} generation_detail={p.generation_detail!r}")
     assert len(pairs) == 1
     assert pairs[0].question.startswith("¿Cuál es el límite")
     assert pairs[0].generation_detail == "llm:claude-sonnet-5"
@@ -53,6 +56,7 @@ def test_descarta_pares_incompletos():
         ]
     )
     pairs = generate_llm_qa(project="p", section_path="s", chunk_text="...", max_pairs=3, model="m", client=client)
+    print(f"\n[test] de 3 candidatos (1 valido, 2 incompletos) sobrevivieron: {len(pairs)}")
     assert len(pairs) == 1
     assert pairs[0].question == "¿Pregunta valida?"
 
@@ -60,6 +64,7 @@ def test_descarta_pares_incompletos():
 def test_lista_vacia_si_el_modelo_no_encuentra_contenido_sustancioso():
     client = _fake_client_returning([])
     pairs = generate_llm_qa(project="p", section_path="s", chunk_text="TO DO.", max_pairs=3, model="m", client=client)
+    print(f"\n[test] modelo devolvio lista vacia -> pairs = {pairs}")
     assert pairs == []
 
 
@@ -74,5 +79,6 @@ def test_item_malformado_no_dict_se_ignora_sin_reventar():
         ]
     )
     pairs = generate_llm_qa(project="p", section_path="s", chunk_text="...", max_pairs=3, model="m", client=client)
+    print(f"\n[test] lista con 1 string suelto + 1 par valido -> sobrevivieron: {len(pairs)}")
     assert len(pairs) == 1
     assert pairs[0].question == "¿Pregunta valida?"

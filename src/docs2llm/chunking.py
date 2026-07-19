@@ -323,4 +323,5 @@ def chunk_sections(
     for i, chunk in enumerate(raw_chunks):
         chunk.chunk_index = i
         chunk.n_chunks_in_doc = n
+    print(f"  [chunking] {len(sections)} secciones -> {n} chunks")
     return raw_chunks

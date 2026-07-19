@@ -88,10 +88,14 @@ def assign_duplicate_of(rows: list[_HasHashAndId]) -> None:
     duplicate_of=None (es la version "original"); el resto apunta a ella.
     """
     rows_by_id = {row.id: row for row in rows}
-    for ids in _duplicate_id_groups(rows).values():
+    grupos = _duplicate_id_groups(rows)
+    total_marcados = 0
+    for ids in grupos.values():
         canonical_id = ids[0]
         for dup_id in ids[1:]:
             rows_by_id[dup_id].duplicate_of = canonical_id
+            total_marcados += 1
+    print(f"[dedup] {total_marcados} filas marcadas como duplicado exacto, en {len(grupos)} clusters")
 
 
 class _UnionFind:
@@ -148,4 +152,7 @@ def file_duplicate_components(rows: list[_HasHashAndId]) -> dict[str, str]:
     # Todo doc_id existe como su propio grupo, aunque no comparta ningun duplicado
     # con nadie (el caso mas comun: la mayoria de los archivos no repiten contenido).
     all_doc_ids = {row.doc_id for row in rows}
-    return {doc_id: uf.find(doc_id) for doc_id in all_doc_ids}
+    resultado = {doc_id: uf.find(doc_id) for doc_id in all_doc_ids}
+    n_componentes = len(set(resultado.values()))
+    print(f"[dedup] {len(all_doc_ids)} documentos agrupados en {n_componentes} componentes conexas")
+    return resultado

@@ -185,4 +185,7 @@ def parse_markdown_sections(text: str, *, fallback_title: str) -> list[Section]:
     # contenido real (la gran mayoria de archivos arrancan directo con un titulo
     # real, asi que en el caso comun esta seccion queda vacia y se descarta aca,
     # sin propagarse como ruido).
-    return [s for s in sections if s.blocks]
+    resultado = [s for s in sections if s.blocks]
+    n_blocks = sum(len(s.blocks) for s in resultado)
+    print(f"  [parse_markdown] {len(resultado)} secciones, {n_blocks} bloques")
+    return resultado

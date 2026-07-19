@@ -18,6 +18,8 @@ def test_proyecto_con_1_solo_documento_va_entero_a_train():
         components={"a.md": "a.md"},
         seed=42, test_fraction=0.2, val_fraction=0.2,
     )
+    print(f"\n[test] doc_ids: {doc_ids}")
+    print(f"[test] warnings: {report['proyecto_solo']['warnings']}")
     assert doc_ids["a.md"] == "train"
     assert report["proyecto_solo"]["warnings"], "debe quedar loggeado que este proyecto no tiene representacion en val/test"
 
@@ -28,6 +30,7 @@ def test_proyecto_con_2_documentos_uno_a_train_otro_a_test():
         components={"a.md": "a.md", "b.md": "b.md"},
         seed=42, test_fraction=0.2, val_fraction=0.2,
     )
+    print(f"\n[test] doc_ids: {doc_ids}")
     assert sorted(doc_ids.values()) == ["test", "train"]
 
 
@@ -39,6 +42,8 @@ def test_componente_compartido_nunca_se_reparte_entre_dos_documentos():
         components={"a.md": "comp1", "b.md": "comp1", "c.md": "comp2", "d.md": "comp3", "e.md": "comp4"},
         seed=42, test_fraction=0.2, val_fraction=0.2,
     )
+    print(f"\n[test] doc_ids: {doc_ids}")
+    print(f"[test] split de a.md={doc_ids['a.md']!r}  split de b.md={doc_ids['b.md']!r}")
     assert doc_ids["a.md"] == doc_ids["b.md"], "a.md y b.md comparten componente, deben ir al mismo split"
 
 
@@ -50,6 +55,8 @@ def test_mismo_seed_da_siempre_el_mismo_resultado():
     )
     result_1, _ = assign_splits(**kwargs)
     result_2, _ = assign_splits(**kwargs)
+    print(f"\n[test] corrida 1: {result_1}")
+    print(f"[test] corrida 2: {result_2}")
     assert result_1 == result_2, "el split debe ser 100% reproducible con el mismo seed (requisito explicito del enunciado)"
 
 
@@ -59,6 +66,7 @@ def test_todos_los_proyectos_quedan_cubiertos_por_algun_split():
         components={f"doc{i}.md": f"doc{i}.md" for i in range(6)},
         seed=42, test_fraction=0.2, val_fraction=0.2,
     )
+    print(f"\n[test] conteo por split: {report['p']['conteo_por_split']}")
     assert set(doc_ids.values()) <= {"train", "val", "test"}
     assert len(doc_ids) == 6
     assert report["p"]["conteo_por_split"]["train"] >= 1, "con 6 documentos, train nunca deberia quedar vacio"
@@ -77,9 +85,11 @@ def test_integracion_corpus_real_sin_fugas_entre_splits():
          test simultaneamente: la fuga de datos textual que toda esta arquitectura
          existe para evitar.
     """
+    print("\n[test] corriendo build_corpus_rows contra docs_raw/ real (esto imprime todo el pipeline)...")
     sources = load_canonical_sources()
     pipeline_config = load_pipeline_config()
     rows, _ = build_corpus_rows(sources, pipeline_config)
+    print(f"[test] corpus real: {len(rows)} filas generadas")
 
     assert len(rows) > 0, "el corpus real no deberia estar vacio"
 
@@ -90,6 +100,7 @@ def test_integracion_corpus_real_sin_fugas_entre_splits():
             assert split_by_doc[row.doc_id] == row.split, f"{row.doc_id} aparece en mas de un split"
         else:
             split_by_doc[row.doc_id] = row.split
+    print(f"[test] invariante 1 OK: {len(split_by_doc)} documentos, ninguno repartido entre 2 splits")
 
     # Invariante 2: contenido duplicado (mismo hash) nunca queda repartido entre splits.
     split_by_hash: dict[str, str] = {}
@@ -101,9 +112,11 @@ def test_integracion_corpus_real_sin_fugas_entre_splits():
             )
         else:
             split_by_hash[row.content_hash_sha256] = row.split
+    print(f"[test] invariante 2 OK: {len(split_by_hash)} hashes distintos, ninguno repartido entre splits")
 
     # Sanity check adicional: los 3 splits deben existir y tener al menos 1 fila
     # (si target/test_fraction estuvieran mal configurados, val o test podrian quedar
     # vacios sin que ningun assert anterior lo detectara).
     splits_presentes = {row.split for row in rows}
+    print(f"[test] splits presentes: {splits_presentes}")
     assert splits_presentes == {"train", "val", "test"}, f"se esperaban los 3 splits, se encontraron: {splits_presentes}"

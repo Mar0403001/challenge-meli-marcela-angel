@@ -110,6 +110,7 @@ def build_corpus_rows(
     las propias filas (contando cuantas tienen duplicate_of distinto de nulo,
     agrupadas por content_hash_sha256) -- ver cli.py.
     """
+    print("[build-corpus] descubriendo archivos en docs_raw/...")
     files = discover_source_files(canonical_sources)
 
     # Primera pasada: leer TODOS los archivos y separarlos en secciones/bloques
@@ -121,20 +122,25 @@ def build_corpus_rows(
     # alrededor; sin esta primera pasada, el chunk final de cada aparicion seria
     # distinto, y la deduplicacion por fila jamas los detectaria como duplicados
     # (esto se confirmo con este caso real, ver notebooks/diagnostico.ipynb, seccion 6).
+    print(f"\n[build-corpus] primera pasada: parseando {len(files)} archivos y detectando bloques duplicados...")
     sections_by_file: list[tuple[SourceFile, list]] = []
     block_hash_counts: Counter[str] = Counter()
     for file in files:
+        print(f"[build-corpus] leyendo {file.relative_path}")
         sections = _parse_file_into_sections(file)
         sections_by_file.append((file, sections))
         for section in sections:
             for block in section.blocks:
                 block_hash_counts[dedup.compute_content_hash(block.text)] += 1
     duplicate_block_hashes = frozenset(h for h, count in block_hash_counts.items() if count > 1)
+    print(f"[build-corpus] bloques con hash repetido en mas de un archivo: {len(duplicate_block_hashes)}")
 
     rows: list[CorpusRow] = []
     project_doc_ids: dict[str, list[str]] = {}
 
+    print(f"\n[build-corpus] segunda pasada: armando chunks para {len(sections_by_file)} archivos...")
     for file, sections in sections_by_file:
+        print(f"[build-corpus] chunkeando {file.relative_path}")
         chunks = chunk_sections(sections, pipeline_config.chunking, duplicate_block_hashes)
 
         if not chunks:
@@ -181,9 +187,11 @@ def build_corpus_rows(
     # Deduplicacion: necesita ver el corpus COMPLETO a la vez (un chunk de un
     # archivo puede ser duplicado de uno de otro archivo distinto, ver dedup.py)
     # -- por eso corre despues del bucle de arriba, no adentro de el.
+    print(f"\n[build-corpus] deduplicando {len(rows)} chunks...")
     dedup.assign_duplicate_of(rows)
     components = dedup.file_duplicate_components(rows)
 
+    print(f"\n[build-corpus] asignando splits para {len(project_doc_ids)} proyectos...")
     doc_id_to_split, split_report = splitting.assign_splits(
         project_doc_ids=project_doc_ids,
         components=components,
@@ -194,4 +202,5 @@ def build_corpus_rows(
     for row in rows:
         row.split = doc_id_to_split[row.doc_id]
 
+    print(f"[build-corpus] listo: {len(rows)} filas finales\n")
     return rows, split_report

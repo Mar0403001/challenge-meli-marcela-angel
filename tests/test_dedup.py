@@ -28,11 +28,16 @@ def test_hash_normaliza_espacios_y_mayusculas():
     cambie el espaciado sin cambiar el contenido real."""
     a = "Hola   Mundo\n\ncon    espacios raros"
     b = "hola mundo con espacios raros"
-    assert compute_content_hash(a) == compute_content_hash(b)
+    hash_a, hash_b = compute_content_hash(a), compute_content_hash(b)
+    print(f"\n[test] hash(a)={hash_a[:12]}...  hash(b)={hash_b[:12]}...")
+    assert hash_a == hash_b
 
 
 def test_hash_distingue_contenido_realmente_distinto():
-    assert compute_content_hash("contenido A") != compute_content_hash("contenido B")
+    hash_a = compute_content_hash("contenido A")
+    hash_b = compute_content_hash("contenido B")
+    print(f"\n[test] hash(A)={hash_a[:12]}...  hash(B)={hash_b[:12]}...")
+    assert hash_a != hash_b
 
 
 def test_assign_duplicate_of_marca_todas_menos_la_primera():
@@ -46,6 +51,7 @@ def test_assign_duplicate_of_marca_todas_menos_la_primera():
     ]
 
     assign_duplicate_of(rows)
+    print(f"\n[test] duplicate_of por fila: {[(r.id, r.duplicate_of) for r in rows]}")
 
     assert rows[0].duplicate_of is None, "la primera fila vista de un cluster de duplicados es la canonica"
     assert rows[1].duplicate_of == "doc1#0"
@@ -71,6 +77,7 @@ def test_file_duplicate_components_une_archivos_que_comparten_hash():
     ]
 
     components = file_duplicate_components(rows)
+    print(f"\n[test] componentes: {components}")
 
     assert components["archivo_a.md"] == components["archivo_b.md"] == components["archivo_c.md"], (
         "los 3 archivos que comparten el chunk duplicado deben quedar en el mismo componente"
@@ -89,5 +96,7 @@ def test_file_duplicate_components_determinista_entre_corridas():
 
     result_1 = file_duplicate_components(rows)
     result_2 = file_duplicate_components(list(reversed(rows)))
+    print(f"\n[test] orden normal: {result_1}")
+    print(f"[test] orden invertido: {result_2}")
 
     assert result_1 == result_2, "el resultado no deberia depender del orden de entrada de las filas"

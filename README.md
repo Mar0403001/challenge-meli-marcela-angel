@@ -90,6 +90,3 @@ Ambas trazan cada fila hasta su origen exacto (`source_path` + `section_path`), 
 - Los templates de OpenAPI describen solo 1 nivel de propiedades anidadas en schemas complejos.
 - El extra de deduplicación por embeddings (near-duplicates semánticos) no está implementado — el MVP cubre duplicados exactos, que es donde se encontró la mayor parte de la duplicación real en `docs_raw/`.
 
-## Material de presentación
-
-Ver `docs/presentation/`.

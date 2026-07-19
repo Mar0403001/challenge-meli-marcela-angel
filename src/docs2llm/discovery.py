@@ -101,6 +101,7 @@ def discover_source_files(canonical_sources: dict[str, ProjectSource]) -> list[S
     files: list[SourceFile] = []
     for project, source in sorted(canonical_sources.items()):
         url_hints = _load_url_hints(source.path)
+        files_before = len(files)
 
         # rglob("*") recorre TODAS las subcarpetas (guide/, specs/, guide/pages/,
         # etc.) sin necesidad de saber de antemano como esta organizado cada
@@ -141,4 +142,7 @@ def discover_source_files(canonical_sources: dict[str, ProjectSource]) -> list[S
                 )
             )
 
+        print(f"[discovery] {project} ({source.canonical_version}): {len(files) - files_before} archivos encontrados")
+
+    print(f"[discovery] total: {len(files)} archivos en {len(canonical_sources)} proyectos")
     return files
