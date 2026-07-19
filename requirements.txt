@@ -1,0 +1,50 @@
+# Dependencias del camino principal (pip install -r requirements.txt).
+# Pineadas a una version concreta para que "reproducible desde cero" sea literal:
+# quien clone el repo dentro de un año instala exactamente lo mismo que yo probe,
+# no "lo que sea que resuelva pip ese dia".
+
+# Parseo de Markdown a un arbol (AST) navegable, en vez de regex sobre texto crudo.
+# Se eligio sobre 'mistune' por tener plugins maduros para tablas GFM (ver mdit-py-plugins).
+markdown-it-py==3.0.0
+mdit-py-plugins==0.4.1
+
+# Limpieza del HTML embebido en varios docs (<div class="content-card">, <details>, etc.):
+# se usa solo para extraer texto plano, no para re-interpretar estructura semantica.
+beautifulsoup4==4.12.3
+
+# Lectura de documentationTypes.json (no hace falta libreria, es json de stdlib) y,
+# sobre todo, parseo de los 3 archivos specs/swagger.yaml (OpenAPI) y de nuestro
+# propio config/config.yaml.
+PyYAML==6.0.2
+
+# Cliente oficial de la API de Claude, usado en qa_llm_generate.py para generar
+# preguntas y respuestas sobre prosa/reglas de negocio (la parte no cubierta por templates).
+anthropic==0.40.0
+
+# Tokenizador real (encoding cl100k_base) usado en chunking.py para dimensionar chunks
+# con conteos exactos, no una aproximacion de caracteres/token. El archivo de encoding
+# esta vendorizado en vendor/tiktoken_cache/ (ver docs2llm/config.py, TIKTOKEN_CACHE_DIR)
+# para que nunca intente descargarlo por red -- la primera version de esta decision lo
+# habia descartado por un fallo real de esa descarga (ver notebooks/diagnostico.ipynb,
+# seccion 5), resuelto vendorizando el archivo en vez de depender de la red en tiempo
+# de ejecucion.
+tiktoken==0.13.0
+
+# Hace que Python valide certificados TLS usando el almacen de certificados NATIVO
+# del sistema operativo, en vez del bundle propio que trae la libreria `certifi`.
+# Se agrego tras un fallo real: en redes corporativas/sandboxed con un proxy de
+# inspeccion TLS (certificado propio instalado en el SO pero no en el bundle de
+# certifi), llamadas a la API de Claude fallaban con
+# "SSL: CERTIFICATE_VERIFY_FAILED: unable to get local issuer certificate" aunque
+# `curl` (que si usa el almacen del SO) llegaba sin problema al mismo host. Ver
+# notebooks/diagnostico.ipynb (seccion 8) para el diagnostico completo. Se activa
+# en cli.py antes de cualquier llamada de red.
+truststore==0.10.4
+
+# Carga el archivo .env local (con ANTHROPIC_API_KEY) sin tener que exportar
+# variables de entorno a mano en cada sesion de terminal. Nunca se versiona el .env real.
+python-dotenv==1.0.1
+
+# Framework de tests. Se usa en particular para test_split_no_leakage.py,
+# que verifica que el split no tenga fugas de datos (el invariante mas critico del pipeline).
+pytest==8.3.3

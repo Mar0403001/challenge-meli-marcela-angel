@@ -1,0 +1,30 @@
+# Entorno virtual de Python: cada quien crea el suyo con requirements.txt,
+# no tiene sentido versionarlo (es pesado y depende del sistema operativo).
+.venv/
+venv/
+
+# Cache de bytecode de Python.
+__pycache__/
+*.pyc
+
+# Variables de entorno reales (la API key de Claude vive aca localmente).
+# .env.example SI se versiona, porque documenta que variable hace falta sin exponer el valor.
+.env
+
+# Artefactos intermedios del pipeline: se regeneran corriendo el codigo,
+# no son parte del entregable final (a diferencia de data/processed/, que si se commitea).
+data/interim/
+
+# Archivos de configuracion de editores/IDE.
+.vscode/
+.idea/
+.claude/
+
+# Cache de pytest.
+.pytest_cache/
+
+# Checkpoints que crea Jupyter al abrir notebooks/diagnostico.ipynb interactivamente.
+.ipynb_checkpoints/
+
+# Documentacion de referencia 
+docs/

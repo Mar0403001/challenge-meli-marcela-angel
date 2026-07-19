@@ -1,0 +1,127 @@
+{
+  "total_chunks": 334,
+  "chunks_marcados_como_duplicado": 37,
+  "clusters_de_duplicados_exactos": 16,
+  "ejemplos": [
+    {
+      "id": "docs_raw/2p-revenue-optimizer-api/latest/guide/pages/table_data_dictionary/rule_header.md#1",
+      "duplicate_of": "docs_raw/2p-revenue-optimizer-api/latest/guide/pages/table_data_dictionary/rule_custom_field.md#1",
+      "source_path": "docs_raw/2p-revenue-optimizer-api/latest/guide/pages/table_data_dictionary/rule_header.md",
+      "section_path": "rule_header Table"
+    },
+    {
+      "id": "docs_raw/2p-revenue-optimizer-api/latest/guide/pages/table_data_dictionary/rule_row.md#1",
+      "duplicate_of": "docs_raw/2p-revenue-optimizer-api/latest/guide/pages/table_data_dictionary/rule_custom_field.md#1",
+      "source_path": "docs_raw/2p-revenue-optimizer-api/latest/guide/pages/table_data_dictionary/rule_row.md",
+      "section_path": "rule_row Table"
+    },
+    {
+      "id": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md#8",
+      "duplicate_of": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md#1",
+      "source_path": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md",
+      "section_path": "Brand Endpoints > Create Brand > `POST /`"
+    },
+    {
+      "id": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md#10",
+      "duplicate_of": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md#3",
+      "source_path": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md",
+      "section_path": "Brand Endpoints > Create Brand > `POST /`"
+    },
+    {
+      "id": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md#15",
+      "duplicate_of": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md#1",
+      "source_path": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md",
+      "section_path": "Brand Endpoints > Get Brand > `GET /{brandId}`"
+    },
+    {
+      "id": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md#17",
+      "duplicate_of": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md#3",
+      "source_path": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md",
+      "section_path": "Brand Endpoints > Get Brand > `GET /{brandId}`"
+    },
+    {
+      "id": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md#20",
+      "duplicate_of": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md#13",
+      "source_path": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md",
+      "section_path": "Brand Endpoints > Update Brand > `PUT /{brandId}`"
+    },
+    {
+      "id": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md#21",
+      "duplicate_of": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md#14",
+      "source_path": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md",
+      "section_path": "Brand Endpoints > Update Brand > `PUT /{brandId}`"
+    },
+    {
+      "id": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md#22",
+      "duplicate_of": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md#6",
+      "source_path": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md",
+      "section_path": "Brand Endpoints > Update Brand > `PUT /{brandId}`"
+    },
+    {
+      "id": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md#24",
+      "duplicate_of": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md#1",
+      "source_path": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md",
+      "section_path": "Brand Endpoints > Update Brand > `PUT /{brandId}`"
+    },
+    {
+      "id": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md#27",
+      "duplicate_of": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md#13",
+      "source_path": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md",
+      "section_path": "Brand Endpoints > Delete Brand > `DELETE /{brandId}`"
+    },
+    {
+      "id": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md#28",
+      "duplicate_of": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md#14",
+      "source_path": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md",
+      "section_path": "Brand Endpoints > Delete Brand > `DELETE /{brandId}`"
+    },
+    {
+      "id": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md#30",
+      "duplicate_of": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md#1",
+      "source_path": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md",
+      "section_path": "Brand Endpoints > Delete Brand > `DELETE /{brandId}`"
+    },
+    {
+      "id": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md#32",
+      "duplicate_of": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md#3",
+      "source_path": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md",
+      "section_path": "Brand Endpoints > Delete Brand > `DELETE /{brandId}`"
+    },
+    {
+      "id": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md#35",
+      "duplicate_of": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md#13",
+      "source_path": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md",
+      "section_path": "Brand Endpoints > Activate Brand > `PUT /{brandId}/activate`"
+    },
+    {
+      "id": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md#36",
+      "duplicate_of": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md#14",
+      "source_path": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md",
+      "section_path": "Brand Endpoints > Activate Brand > `PUT /{brandId}/activate`"
+    },
+    {
+      "id": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md#37",
+      "duplicate_of": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md#1",
+      "source_path": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md",
+      "section_path": "Brand Endpoints > Activate Brand > `PUT /{brandId}/activate`"
+    },
+    {
+      "id": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md#39",
+      "duplicate_of": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md#3",
+      "source_path": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md",
+      "section_path": "Brand Endpoints > Activate Brand > `PUT /{brandId}/activate`"
+    },
+    {
+      "id": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md#42",
+      "duplicate_of": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md#13",
+      "source_path": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md",
+      "section_path": "Brand Endpoints > Check Brand Activable > `GET /{brandId}/activable`"
+    },
+    {
+      "id": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md#43",
+      "duplicate_of": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md#14",
+      "source_path": "docs_raw/catalog-portfolio-api/latest/guide/api-reference/brands.md",
+      "section_path": "Brand Endpoints > Check Brand Activable > `GET /{brandId}/activable`"
+    }
+  ]
+}

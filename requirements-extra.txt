@@ -1,0 +1,9 @@
+# Dependencias SOLO para el extra opcional de deduplicacion por near-duplicates
+# (similitud de embeddings, ver dedup.py: near_duplicate_check=true en config/config.yaml).
+# Se separan de requirements.txt a proposito: son pesadas (torch es ~cientos de MB) y
+# el pipeline principal (build-corpus / build-qa) funciona completo sin ellas.
+#
+# Instalar solo si se quiere activar ese extra:
+#   pip install -r requirements-extra.txt
+
+sentence-transformers==3.0.1

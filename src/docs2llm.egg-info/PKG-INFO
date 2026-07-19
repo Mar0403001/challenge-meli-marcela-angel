@@ -1,0 +1,5 @@
+Metadata-Version: 2.4
+Name: docs2llm
+Version: 0.1.0
+Summary: Pipeline que convierte documentacion cruda en Markdown en un corpus normalizado y un dataset de Q&A para aplicaciones de LLMs.
+Requires-Python: >=3.10

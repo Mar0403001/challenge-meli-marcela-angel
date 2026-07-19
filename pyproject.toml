@@ -1,0 +1,18 @@
+[project]
+name = "docs2llm"
+version = "0.1.0"
+description = "Pipeline que convierte documentacion cruda en Markdown en un corpus normalizado y un dataset de Q&A para aplicaciones de LLMs."
+requires-python = ">=3.10"
+
+[build-system]
+# setuptools es la opcion mas estandar y menos sorprendente para un evaluador
+# que solo necesita "pip install -e ." para poder hacer `python -m docs2llm ...`
+# desde cualquier carpeta sin pelearse con el PYTHONPATH.
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+# Codigo real vive en src/docs2llm/ (src layout), no en la raiz del repo:
+# evita que Python importe por accidente una carpeta local con el mismo nombre
+# de un paquete de PyPI, y deja la raiz del repo limpia (solo configs y docs).
+where = ["src"]

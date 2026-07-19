@@ -1,0 +1,18 @@
+{
+  "candidatos_generados": 673,
+  "candidatos_por_metodo": {
+    "template": 248,
+    "llm": 425
+  },
+  "candidatos_que_pasaron_qc": 663,
+  "filas_finales_tras_tope_anti_volumen": 160,
+  "filas_por_split": {
+    "test": 46,
+    "train": 89,
+    "val": 25
+  },
+  "filas_por_metodo": {
+    "llm": 123,
+    "template": 37
+  }
+}

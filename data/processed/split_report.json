@@ -1,0 +1,110 @@
+{
+  "2p-revenue-optimizer-api": {
+    "n_documentos_unicos": 2,
+    "n_documentos_totales": 4,
+    "conteo_por_split": {
+      "train": 1,
+      "val": 0,
+      "test": 1
+    },
+    "warnings": [
+      "Solo 2 documentos/grupos en '2p-revenue-optimizer-api': 1 a train, 1 a test, ninguno a val."
+    ]
+  },
+  "catalog-portfolio-api": {
+    "n_documentos_unicos": 5,
+    "n_documentos_totales": 8,
+    "conteo_por_split": {
+      "train": 3,
+      "val": 1,
+      "test": 1
+    },
+    "warnings": []
+  },
+  "demand-forecast-docs": {
+    "n_documentos_unicos": 4,
+    "n_documentos_totales": 4,
+    "conteo_por_split": {
+      "train": 2,
+      "val": 1,
+      "test": 1
+    },
+    "warnings": []
+  },
+  "order-workflow-api": {
+    "n_documentos_unicos": 8,
+    "n_documentos_totales": 8,
+    "conteo_por_split": {
+      "train": 4,
+      "val": 2,
+      "test": 2
+    },
+    "warnings": []
+  },
+  "payment-promise-gateway": {
+    "n_documentos_unicos": 1,
+    "n_documentos_totales": 1,
+    "conteo_por_split": {
+      "train": 1,
+      "val": 0,
+      "test": 0
+    },
+    "warnings": [
+      "Solo 1 documento/grupo unico en 'payment-promise-gateway': va entero a train, sin representacion en val/test para este proyecto."
+    ]
+  },
+  "price-engine-api": {
+    "n_documentos_unicos": 5,
+    "n_documentos_totales": 5,
+    "conteo_por_split": {
+      "train": 3,
+      "val": 1,
+      "test": 1
+    },
+    "warnings": []
+  },
+  "traffic-gate-api": {
+    "n_documentos_unicos": 5,
+    "n_documentos_totales": 6,
+    "conteo_por_split": {
+      "train": 3,
+      "val": 1,
+      "test": 1
+    },
+    "warnings": []
+  },
+  "unified-transaction-configs": {
+    "n_documentos_unicos": 2,
+    "n_documentos_totales": 2,
+    "conteo_por_split": {
+      "train": 1,
+      "val": 0,
+      "test": 1
+    },
+    "warnings": [
+      "Solo 2 documentos/grupos en 'unified-transaction-configs': 1 a train, 1 a test, ninguno a val."
+    ]
+  },
+  "vendor-stockkeeper-api": {
+    "n_documentos_unicos": 5,
+    "n_documentos_totales": 5,
+    "conteo_por_split": {
+      "train": 3,
+      "val": 1,
+      "test": 1
+    },
+    "warnings": []
+  },
+  "zenith-keeper": {
+    "n_documentos_unicos": 2,
+    "n_documentos_totales": 2,
+    "conteo_por_split": {
+      "train": 1,
+      "val": 0,
+      "test": 1
+    },
+    "warnings": [
+      "Solo 2 documentos/grupos en 'zenith-keeper': 1 a train, 1 a test, ninguno a val."
+    ]
+  }
+}

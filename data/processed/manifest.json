@@ -1,0 +1,29 @@
+{
+  "generated_at_utc": "2026-07-19T03:23:53.298530+00:00",
+  "total_proyectos": 10,
+  "total_chunks": 334,
+  "chunks_por_split": {
+    "train": 154,
+    "test": 142,
+    "val": 38
+  },
+  "chunks_por_content_type": {
+    "prose": 168,
+    "table": 27,
+    "code": 88,
+    "api_spec": 51
+  },
+  "chunks_is_low_signal": 45,
+  "canonical_sources_usadas": {
+    "catalog-portfolio-api": "latest",
+    "payment-promise-gateway": "latest",
+    "2p-revenue-optimizer-api": "latest",
+    "vendor-stockkeeper-api": "0.0.10-stock-consumer",
+    "order-workflow-api": "5.6.2-hotfix-1",
+    "demand-forecast-docs": "latest",
+    "price-engine-api": "latest",
+    "traffic-gate-api": "latest",
+    "unified-transaction-configs": "v0.0.2",
+    "zenith-keeper": "1.1.6"
+  }
+}

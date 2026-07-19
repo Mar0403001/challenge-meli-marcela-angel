@@ -1,0 +1,96 @@
+# Configuracion del pipeline
+
+# Que carpeta de version usar por proyecto, y por que. "latest" NO es confiable como
+# senal de version mas nueva en este corpus (se verifico con hashes: a veces es un
+# espejo exacto de una version numerada, a veces es la copia MAS VIEJA de las
+# disponibles) -- por eso cada proyecto tiene un veredicto curado con su propia
+# evidencia, en vez de una regla automatica sobre el nombre de la carpeta.
+
+canonical_sources:
+  projects:
+
+    catalog-portfolio-api:
+      canonical: latest
+      reason: >
+        latest y 0.0.1-test-bench-v2a son byte-identicos (sha256 verificado en los
+        10 archivos). Se usa latest por convencion, el contenido es el mismo.
+
+    payment-promise-gateway:
+      canonical: latest
+      reason: >
+        Contenido (guide/README.md) byte-identico a 0.0.10-test-crc-migration; solo
+        difiere documentationTypes.json (salta a version 3.7.0 sin re-exportar
+        contenido -- metadata desincronizada). Indiferente, se usa latest por convencion.
+
+    2p-revenue-optimizer-api:
+      canonical: latest
+      reason: >
+        latest SI tiene contenido distinto (no es un espejo): columnas renombradas
+        (created_date->date, productive_date->version) y una tabla nueva
+        (rule_custom_field) que no existe en 0.2.2. Aqui latest es genuinamente el
+        mas completo, confirmado por diff de contenido, no asumido por el nombre.
+
+    vendor-stockkeeper-api:
+      canonical: 0.0.10-stock-consumer
+      reason: >
+        "latest" es byte-identico a 0.0.3-paused-seller (la carpeta MAS VIEJA de las
+        3 versiones numeradas disponibles), pese a que su documentationTypes.json
+        apunta a la URL "0.41.0". El contenido real evoluciona en
+        0.0.3 -> 0.0.6 -> 0.0.10 (0.0.10 agrega un endpoint y un diagrama de
+        secuencia nuevos). Por eso se usa 0.0.10-stock-consumer y NO "latest".
+        CONOCIDO Y CORREGIDO EN CODIGO: 0.0.10-stock-consumer tiene un bug de
+        doble-escape HTML en bloques de codigo (&#34;/&gt;/&lt; en vez de "/></),
+        ausente en 0.0.3/0.0.6 -- normalize.py lo corrige en vez de resignarse a
+        usar una version con menos features solo para evitar el bug.
+
+    # Proyectos con una unica carpeta de version disponible: no hay ambiguedad que resolver.
+    order-workflow-api: { canonical: 5.6.2-hotfix-1, reason: "Unica carpeta de version presente en docs_raw/." }
+    demand-forecast-docs: { canonical: latest, reason: "Unica carpeta de version presente en docs_raw/." }
+    price-engine-api: { canonical: latest, reason: "Unica carpeta de version presente en docs_raw/." }
+    traffic-gate-api: { canonical: latest, reason: "Unica carpeta de version presente en docs_raw/." }
+    unified-transaction-configs: { canonical: v0.0.2, reason: "Unica carpeta de version presente en docs_raw/." }
+    zenith-keeper: { canonical: "1.1.6", reason: "Unica carpeta de version presente en docs_raw/." }
+
+# Parametros ajustables del pipeline: "con que numeros correr el algoritmo"
+
+pipeline:
+
+  chunking:
+    # Objetivo blando de tamano de chunk: no fuerza fusionar secciones tematicamente
+    # distintas solo para "llenar" el chunk (docs_raw son mayormente secciones cortas).
+    target_tokens: 300
+    # Tope duro. Un bloque atomico que lo supera por si solo cae al fallback de
+    # ventana con overlap -- el unico caso donde de verdad se corta texto.
+    max_tokens: 512
+    # Solapamiento SOLO para ese fallback de ventana (~15% de max_tokens); entre
+    # chunks de secciones distintas no hay overlap (agregaria redundancia).
+    overlap_tokens: 60
+
+  dedup:
+    # Extra opcional (ver requirements-extra.txt); false por default para que
+    # build-corpus funcione completo sin sentence-transformers/torch instalados.
+    near_duplicate_check: false
+    # Umbral tipico reportado en literatura de dedup de corpus (ej. C4/RefinedWeb);
+    # no afinado especificamente para este corpus por ser un extra opcional.
+    near_duplicate_threshold: 0.9
+
+  split:
+    # Semilla fija: mismo input -> mismo split siempre (requisito de reproducibilidad).
+    seed: 42
+    # 60/20/20 en vez del clasico 80/10/10: con pocos proyectos y documentos
+    # canonicos, un test del 10% podria terminar siendo un solo proyecto chico, con
+    # metricas de alta varianza.
+    test_fraction: 0.2
+    val_fraction: 0.2
+
+  qa:
+    # Tope de pares Q&A por documento fuente: evita que un proyecto con muchos
+    # archivos domine el dataset final por volumen, no por densidad real de senal.
+    max_pairs_per_document: 8
+    # Modelo usado en qa_llm_generate.py para prosa/reglas de negocio (lo unico que
+    # no se puede generar por template). Ajustable sin tocar codigo.
+    llm_model: "claude-sonnet-5"
+    # Extra opcional de QC (segunda llamada a un modelo juzgando el grounding);
+    # false por default -- el evidence-substring check (obligatorio) ya cubre esto
+    # de forma barata y determinista.
+    enable_llm_judge: false

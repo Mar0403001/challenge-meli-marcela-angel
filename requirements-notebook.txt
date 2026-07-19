@@ -1,0 +1,18 @@
+# Dependencias SOLO para abrir/correr notebooks/diagnostico.ipynb -- el notebook que
+# reemplaza a DECISIONS.md como fuente unica de evidencia de cada decision del pipeline
+# (ver README). El pipeline principal (build-corpus / build-qa) no depende de nada de
+# aca; se separa por la misma razon que requirements-extra.txt: no forzar a instalar
+# Jupyter/pandas solo para correr el CLI.
+#
+# Instalar con:
+#   pip install -r requirements-notebook.txt
+#   jupyter notebook notebooks/diagnostico.ipynb
+
+ipykernel==7.3.0
+nbformat==5.10.4
+nbclient==0.11.0
+notebook==7.6.0
+# Version 3.0.3 (no 2.2.3): 2.2.3 no tiene wheel prebuilt para Python 3.14 (release
+# muy reciente) y falla al compilar (requiere Meson + Visual Studio build tools) --
+# mismo patron que el ajuste de tiktoken en requirements.txt (ver notebook, seccion 5).
+pandas==3.0.3
