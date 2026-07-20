@@ -19,21 +19,12 @@ puede terminar con el split real (medido en chunks, que es la unidad que de verd
 ve un modelo de retrieval/RAG o de fine-tuning) muy lejos de 60/20/20, aunque el
 reparto "por cabeza" haya sido el correcto.
 
-Por que el balanceo es GLOBAL (sobre todo el corpus a la vez) y no una cuota
-60/20/20 recalculada de cero DENTRO de cada proyecto: la primera version de este
-modulo hacia el balanceo por proyecto, pero eso tiene un problema real, que se
-encontro corriendo el pipeline contra docs_raw completo: cada proyecto, evaluado
-de forma aislada, manda "razonablemente" su documento mas pesado a la cuota mas
-grande (train) -- pero con 10 proyectos haciendo eso al mismo tiempo, sin que
-ninguno sepa cuanto ya absorbio train en los proyectos anteriores, el train
-agregado terminaba en ~74% del corpus real (chunks), muy por encima del 60%
-buscado. Por eso `assign_splits` pondera cada grupo de documentos por su
+`assign_splits` pondera cada grupo de documentos por su
 cantidad de chunks (`chunk_count_by_doc_id`) y corre un algoritmo greedy tipo
 "longest-processing-time-first" (LPT, un heuristico clasico de balanceo de
 carga) sobre TODOS los grupos del corpus a la vez, en una sola pasada: ordena
 los grupos de mayor a menor peso y asigna cada uno, de a uno, al split que en
-ESE momento (con el estado acumulado de TODO lo ya asignado, no solo de este
-proyecto) este mas lejos de su cuota objetivo. Con el estado compartido entre
+ESE momento este mas lejos de su cuota objetivo. Con el estado compartido entre
 proyectos, si train ya absorbio varios documentos grandes de proyectos
 anteriores, los proyectos que siguen dejan de mandarle todo lo grande a train
 por default -- el balance final se mide sobre el corpus completo, no proyecto
@@ -63,19 +54,6 @@ def assign_splits(
     EN CHUNKS, no en cantidad de documentos ni por proyecto), sin partir nunca un
     grupo de documentos conectados entre dos splits distintos. Devuelve
     (doc_id -> split, un reporte con el detalle por proyecto).
-
-    Por que se escribio un repartidor propio en vez de usar herramientas ya hechas
-    de scikit-learn (como GroupShuffleSplit o StratifiedGroupKFold): el
-    comportamiento de esas herramientas frente a grupos de peso muy dispar (un
-    documento de 1 chunk junto a uno de 51) es dificil de predecir y de explicar
-    en vivo (ver notebooks/diagnostico.ipynb, seccion 7).
-
-    `project_doc_ids`: {nombre_de_proyecto: [doc_id, ...]} -- todos los doc_id
-    (archivos) de ese proyecto, en cualquier orden. Ya no se usa para calcular
-    cuotas (el balanceo es global), solo para armar el reporte desglosado.
-    `components`: doc_id -> id_del_grupo, viene de dedup.file_duplicate_components.
-    `chunk_count_by_doc_id`: doc_id -> cantidad de chunks que aporta ese documento
-    al corpus final -- el "peso" que usa el balanceo (ver el modulo, arriba).
     """
     # Peso (en chunks) de cada grupo de documentos conectados: la suma de los
     # chunks de todos los doc_id que caen en ese grupo, sin importar de que
