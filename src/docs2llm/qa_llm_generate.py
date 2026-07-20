@@ -63,7 +63,7 @@ def _es_reintentable(exc: Exception) -> bool:
         return exc.status_code in _STATUS_CODES_REINTENTABLES
     return False
 
-_SYSTEM_PROMPT = """Sos un asistente que genera datasets de pregunta-respuesta de alta calidad \
+_SYSTEM_PROMPT = """Eres un asistente que genera datasets de pregunta-respuesta de alta calidad \
 para entrenar y evaluar modelos de lenguaje sobre documentacion tecnica interna de una empresa.
 
 Reglas estrictas:
@@ -71,13 +71,13 @@ Reglas estrictas:
 que se te da. No inventes datos que no esten ahi, ni completes con conocimiento general.
 - Cada respuesta debe venir acompañada de "evidence_span": una cita LITERAL (copiada \
 palabra por palabra, sin parafrasear ni resumir) del fragmento, que sustente completamente \
-la respuesta. Si no podes citar una porcion literal que la sustente, no generes ese par.
-- Priorizá datos concretos y verificables: reglas de negocio, limites numericos, nombres \
+la respuesta. Si no puedes citar una porcion literal que la sustente, no generes ese par.
+- Prioriza datos concretos y verificables: reglas de negocio, limites numericos, nombres \
 de campos, comportamientos especificos, codigos de error, ejemplos de valores. Evita \
 preguntas genericas tipo "de que trata este documento" o "que es X" cuando X no se define \
 con precision en el fragmento.
 - Si el fragmento es puro boilerplate, placeholder, o no tiene contenido sustancioso para \
-una pregunta seria, devolve una lista de pares VACIA en vez de forzar una de baja calidad."""
+una pregunta seria, devuelve una lista de pares VACIA en vez de forzar una de baja calidad."""
 
 _QA_TOOL = {
     "name": "submit_qa_pairs",
@@ -115,7 +115,7 @@ def _build_user_message(project: str, section_path: str, chunk_text: str, max_pa
         f"Proyecto: {project}\n"
         f"Sección del documento: {section_path}\n\n"
         f'Fragmento:\n"""\n{chunk_text}\n"""\n\n'
-        f"Generá hasta {max_pairs} pares de pregunta-respuesta siguiendo las reglas del system prompt."
+        f"Genera hasta {max_pairs} pares de pregunta-respuesta siguiendo las reglas del system prompt."
     )
 
 

@@ -30,7 +30,7 @@ anteriores, los proyectos que siguen dejan de mandarle todo lo grande a train
 por default -- el balance final se mide sobre el corpus completo, no proyecto
 por proyecto.
 
-El reporte (mas abajo, en `report`) se arma DESPUES de decidir todo, y sigue
+El reporte (`report`) se arma DESPUES de decidir todo, y sigue
 desglosado por proyecto -- sirve para auditar que cada proyecto tenga
 representacion razonable en cada split, aunque la decision de asignacion en si
 ya no reserva una cuota fija por proyecto.
@@ -101,9 +101,7 @@ def assign_splits(
     doc_id_to_split = {doc_id: assigned[comp_id] for doc_id, comp_id in components.items()}
 
     # El reporte se arma por proyecto DESPUES de decidir todo, a partir del
-    # resultado ya calculado -- ya no hace falta procesar proyecto por proyecto
-    # para decidir nada, pero desglosarlo asi sigue sirviendo para auditar si
-    # alguno quedo sin representacion real en algun split.
+    # resultado ya calculado.
     report: dict[str, dict] = {}
     for project in sorted(project_doc_ids):
         doc_ids = project_doc_ids[project]

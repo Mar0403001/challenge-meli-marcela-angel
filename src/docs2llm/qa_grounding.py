@@ -1,8 +1,7 @@
 """Control de calidad de los pares de pregunta-respuesta, en 3 niveles de
 prioridad segun el tiempo disponible (ver notebooks/diagnostico.ipynb, seccion 9):
 
-  1. Chequeo de evidencia (obligatorio, barato, siempre da el mismo resultado): la
-     respuesta tiene que venir acompañada de una cita textual EXACTA del chunk
+  1. Chequeo de evidencia obligatorio: la respuesta tiene que venir acompañada de una cita textual EXACTA del chunk
      fuente. Si esa cita no existe literalmente en el chunk, el par se descarta --
      es el mecanismo que mas rinde por el esfuerzo que lleva: convierte el
      "respaldo de la respuesta" (grounding) de algo que "parece confiable" a algo

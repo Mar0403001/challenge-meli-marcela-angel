@@ -59,30 +59,22 @@ def fix_broken_atx_headings(text: str) -> str:
 
 # --- 2. Comillas y simbolos convertidos a codigo HTML dentro de bloques de codigo ----
 #
-# vendor-stockkeeper-api/0.0.10-stock-consumer (la carpeta que se eligio como version
-# canonica, ver config/config.yaml, clave canonical_sources) tiene comillas y los
+# vendor-stockkeeper-api/0.0.10-stock-consumer tiene comillas y los
 # simbolos '<'/'>' convertidos a su version "escapada" en HTML (&#34;, &#39;, &gt;,
 # &lt;) DENTRO de bloques de codigo JSON -- se conto: 546 apariciones de &#34; en
-# important.md, contra 0 en la misma seccion de otras versiones del mismo proyecto.
+# important.md.
 # Es un bug de esa exportacion puntual (probablemente se genero a partir de una
 # pagina HTML ya renderizada), no un uso a proposito de esos codigos.
 #
 # Se aplica a CUALQUIER archivo, no solo a ese proyecto, porque la operacion no hace
 # nada donde el bug no existe: si un bloque de codigo no tiene simbolos escapados,
-# html.unescape() (una funcion de la libreria estandar de Python) no cambia nada. Es
-# mas simple y mas seguro que escribir a mano un caso especial tipo
-# "si el proyecto es vendor-stockkeeper-api, hacer esto".
+# html.unescape() (una funcion de la libreria estandar de Python) no cambia nada.
 _CODE_FENCE_BLOCK_RE = re.compile(r"(^```[^\n]*\n)(.*?)(\n```)", re.DOTALL | re.MULTILINE)
 
 
 def unescape_html_entities_in_code_fences(text: str) -> str:
     """Revierte comillas/`<`/`>` que quedaron convertidas a codigo HTML (`&#34;`,
     `&gt;`...) dentro de bloques de codigo.
-
-    Por que se aplica a todo archivo y no solo a un proyecto puntual: como no hace
-    nada donde el bug no existe, es mas simple y mas seguro que escribir un caso
-    especial por proyecto (ver notebooks/diagnostico.ipynb, seccion 3, el bug de
-    vendor-stockkeeper-api).
     """
 
     def _unescape_body(match: re.Match) -> str:
@@ -110,10 +102,6 @@ _MERMAID_BLOCK_RE = re.compile(r"(```mermaid\n)(.*?)(\n```)", re.DOTALL)
 
 def collapse_duplicate_mermaid_style_lines(text: str) -> str:
     """Elimina lineas `style <nodo> ...` repetidas dentro del MISMO diagrama Mermaid.
-
-    Por que se arregla aca y no en dedup.py: es ruido dentro de una sola unidad de
-    contenido (un mismo bloque de codigo), no un duplicado entre dos fragmentos
-    distintos -- la diferencia esta explicada en notebooks/diagnostico.ipynb, seccion 3.
     """
 
     def _dedupe_styles(match: re.Match) -> str:
@@ -135,8 +123,7 @@ def normalize_markdown_text(text: str) -> str:
     """Aplica los 3 fixes de este modulo, en orden, sobre un archivo .md crudo.
 
     El orden importa: fix_broken_atx_headings corre primero para que, si algun
-    encabezado roto estuviera dentro de lo que mas tarde se detecta como fence (no
-    pasa en este corpus, pero es la relacion segura), el resto de pasos ya trabajen
+    encabezado roto estuviera dentro de lo que mas tarde se detecta como fence el resto de pasos ya trabajen
     sobre fences bien delimitados.
     """
     antes = text

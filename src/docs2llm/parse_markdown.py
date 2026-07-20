@@ -8,7 +8,7 @@ saber donde empieza y termina cada seccion (H1/H2/H3/...), y dentro de cada
 seccion, que partes son "atomicas" (tablas, bloques de codigo, listas, HTML) y por
 lo tanto nunca se deben cortar a la mitad.
 
-Antes de escribir este modulo se comprobo (no se asumio) como se comporta
+Antes de escribir este modulo se comprobo como se comporta
 markdown-it-py:
   - Con el modo 'commonmark' + `.enable('table')`, las tablas estilo GitHub se
     convierten en un unico "token" `table_open`, que ya sabe donde empieza y
@@ -40,15 +40,11 @@ from markdown_it import MarkdownIt
 from docs2llm.parse_html import html_block_to_text
 from docs2llm.parse_units import Block, Section
 
-# Quita **negrita**/__negrita__ de los TITULOS de encabezado (no del resto del texto):
+# Quita **negrita**/__negrita__ de los TITULOS de encabezado:
 # se encontro que en demand-forecast-docs/overview.md varios titulos usan negrita de
 # Markdown (por ejemplo "## **Git**"), y sin este arreglo section_path/heading
 # terminarian mostrando los asteriscos tal cual, en vez de un titulo limpio. Solo se
-# quita la negrita marcada con doble simbolo (** o __, que no dejan dudas); a
-# proposito NO se toca *cursiva simple* ni _guion_bajo_, porque varios titulos de
-# este corpus son en realidad nombres de columnas con guion bajo (por ejemplo tablas
-# como rule_custom_field), y una regla que borrara cursiva de un solo caracter
-# destruiria esos nombres en vez de limpiar formato real.
+# quita la negrita marcada con doble simbolo (** o __).
 _BOLD_MARKUP_RE = re.compile(r"\*\*(.+?)\*\*|__(.+?)__")
 
 
@@ -56,9 +52,7 @@ def _clean_heading_title(raw_title: str) -> str:
     return _BOLD_MARKUP_RE.sub(lambda m: m.group(1) or m.group(2), raw_title).strip()
 
 # Se arranca del modo 'commonmark' (el mas estricto y predecible de markdown-it-py)
-# y se habilita SOLO el soporte de tablas ('table'), en vez de usar el modo
-# 'default' de la libreria (que trae reglas extra que no hacen falta aca y que
-# podrian comportarse de formas que no se verificaron para este corpus en particular).
+# y se habilita SOLO el soporte de tablas ('table').
 _MD = MarkdownIt("commonmark").enable("table")
 
 # Estos son los tipos de "token" (de nivel 0) que representan un bloque de contenido
@@ -117,8 +111,7 @@ def parse_markdown_sections(text: str, *, fallback_title: str) -> list[Section]:
 
     sections: list[Section] = []
     # Pila de (nivel, titulo) de los titulos actualmente "abiertos" -- define la
-    # ruta de migas de pan (breadcrumb) del contenido que se esta leyendo en este
-    # punto del archivo.
+    # ruta del contenido que se esta leyendo en este punto del archivo.
     heading_stack: list[tuple[int, str]] = []
 
     # Seccion "de emergencia" para cualquier contenido que aparezca antes del
@@ -143,7 +136,7 @@ def parse_markdown_sections(text: str, *, fallback_title: str) -> list[Section]:
             level = int(token.tag[1])  # "h1" -> 1, "h2" -> 2, ...
             title = _clean_heading_title(tokens[i + 1].content)  # el token 'inline' siempre viene justo despues
 
-            # Cierra (saca de la pila) cualquier titulo de nivel igual o mayor: un
+            # Cierra cualquier titulo de nivel igual o mayor: un
             # nuevo H2 termina la seccion del H2 anterior (mismo nivel) y de
             # cualquier H3/H4 que hubiera quedado abierto por debajo (nivel mayor =
             # mas profundo, mas anidado).

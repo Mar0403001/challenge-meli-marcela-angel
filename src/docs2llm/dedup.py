@@ -4,11 +4,8 @@ que ARCHIVOS comparten contenido duplicado (para que splitting.py no los separe
 entre distintos splits).
 
 Este modulo trabaja sobre el corpus COMPLETO (todos los proyectos juntos), no
-proyecto por proyecto: es mas simple de programar, y si dos proyectos distintos
-llegaran a compartir un chunk identico (no se encontro ningun caso asi en
-docs_raw, pero nada lo impide en principio), el resultado seria el mismo que si
-se hubiera limitado el analisis a un solo proyecto -- osea, mirar todo el corpus a
-la vez es una generalizacion segura, no una simplificacion que se pierda casos reales.
+proyecto por proyecto: si dos proyectos distintos llegaran a compartir un chunk identico,
+el resultado seria el mismo que si se hubiera limitado el analisis a un solo proyecto.
 
 Este archivo responde tres preguntas distintas, con funciones separadas:
   1. "Este chunk puntual, ¿es un duplicado EXACTO de otro? ¿de cual?" -> assign_duplicate_of
@@ -29,8 +26,7 @@ Por que hace falta ademas del hash exacto: el hash es ciego a contenido que dice
 "casi" lo mismo -- el caso real encontrado en 2p-revenue-optimizer-api es una
 tabla con columnas renombradas (created_date -> date) entre versiones: mismo
 contenido real, hash distinto porque el texto cambio. Un duplicado asi NO se
-marca con `duplicate_of` (el texto no es literalmente identico, seria enganoso
-llamarlo "duplicado exacto"), pero SI tiene que agrupar sus documentos en la
+marca con `duplicate_of`, pero SI tiene que agrupar sus documentos en la
 misma componente conexa para el split, por la misma razon que un duplicado
 exacto: si quedara repartido entre train y test, el modelo veria en test una
 version casi identica de algo que ya vio en train. Por eso la deteccion de
@@ -61,12 +57,6 @@ def compute_content_hash(text: str) -> str:
     """Calcula un hash SHA-256 de `text`, despues de juntar espacios y pasar todo
     a minuscula -- esta es la clave que se usa para la deduplicacion EXACTA en
     todo el pipeline (tanto para chunks completos como para bloques atomicos).
-
-    Por que normalizar espacios/mayusculas antes de calcular el hash: para
-    detectar duplicados que solo difieren en formato (por ejemplo, una tabla
-    realineada entre dos versiones del mismo documento), sin necesitar comparar
-    el significado real del texto (para contenido que cambia MAS que el formato,
-    ver find_near_duplicate_pairs).
     """
     normalized = _WHITESPACE_RE.sub(" ", text).strip().casefold()
     return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
@@ -102,9 +92,7 @@ def assign_duplicate_of(rows: list[_HasHashAndId]) -> None:
 
     Por que marcar en vez de borrar: para que se pueda auditar en corpus.jsonl QUE
     se considero duplicado y de cual original, no solo que una fila desaparecio
-    (ver notebooks/diagnostico.ipynb, seccion 6). Esta funcion modifica `rows`
-    directamente (in-place): la primera fila de cada grupo queda con
-    duplicate_of=None (es la version "original"); el resto apunta a ella.
+    (ver notebooks/diagnostico.ipynb, seccion 6).
     """
     rows_by_id = {row.id: row for row in rows}
     grupos = _duplicate_id_groups(rows)
@@ -119,27 +107,17 @@ def assign_duplicate_of(rows: list[_HasHashAndId]) -> None:
 
 # --- Duplicados aproximados (near-duplicates) por similitud de embeddings -----------
 #
-# Por que este modelo puntual (all-MiniLM-L6-v2) y no uno mas grande (ej.
-# all-mpnet-base-v2, tambien de sentence-transformers): es el modelo de proposito
+# Por que este modelo puntual (all-MiniLM-L6-v2): es el modelo de proposito
 # general mas chico y rapido de esa libreria (384 dimensiones, ~90MB, entrenado de
-# forma contrastiva sobre mas de mil millones de pares de oraciones -- ver su model
-# card en Hugging Face, sentence-transformers/all-MiniLM-L6-v2), pensado
+# forma contrastiva sobre mas de mil millones de pares de oraciones, pensado
 # justamente para similitud semantica/clustering de proposito general. Para ~334
 # chunks no hace falta la precision extra de un modelo mas pesado: la tarea es
 # separar "casi-duplicado" de "no relacionado" (una distincion gruesa, ver la
 # calibracion en config/config.yaml), no un ranking fino de relevancia.
-#
-# El modelo (~90MB) esta vendorizado en vendor/sentence_transformers_cache/ (ver
-# docs2llm/config.py, SENTENCE_TRANSFORMERS_MODEL_DIR) -- mismo patron que
-# tiktoken: se descarga una sola vez durante el desarrollo y se guarda en el repo,
-# para que build-corpus nunca dependa de la red en ninguna maquina.
-
 
 @functools.lru_cache(maxsize=1)
 def _embedding_model():
-    """Carga el modelo de embeddings una sola vez por proceso (cachea el objeto,
-    no solo el archivo en disco -- cargarlo de nuevo en cada llamada seria lento
-    sin ninguna razon, el modelo no cambia durante una corrida)."""
+    """Carga el modelo de embeddings una sola vez por proceso"""
     from sentence_transformers import SentenceTransformer
 
     from docs2llm.config import SENTENCE_TRANSFORMERS_MODEL_DIR
@@ -164,7 +142,7 @@ _CONTENT_TYPES_SIN_NEAR_DUPLICATE_CHECK = {"api_spec"}
 def find_near_duplicate_pairs(rows: list[_HasHashAndId], threshold: float) -> list[tuple[str, str]]:
     """Devuelve pares (id, id) de chunks cuyo contenido es semanticamente casi
     igual (similitud coseno de embeddings >= threshold), sin ser un duplicado
-    EXACTO (eso ya lo cubre compute_content_hash/assign_duplicate_of).
+    EXACTO.
 
     Por que embeddings y no una comparacion de texto mas simple (ej. diferencia
     caracter a caracter): el caso real que motivo esto (2p-revenue-optimizer-api,
@@ -174,13 +152,12 @@ def find_near_duplicate_pairs(rows: list[_HasHashAndId], threshold: float) -> li
 
     Solo se comparan chunks del MISMO content_type (una tabla contra otra tabla,
     prosa contra prosa) -- comparar tipos distintos no aporta nada real y suma
-    ruido. Los chunks "api_spec" se excluyen del todo, ver
-    _CONTENT_TYPES_SIN_NEAR_DUPLICATE_CHECK arriba.
+    ruido. Los chunks "api_spec" se excluyen del todo.
 
     Es O(n^2) comparaciones (se calcula la matriz de similitud completa) -- para
     los ~334 chunks de este corpus son ~55 mil pares, trivial. Para un corpus de
     millones de chunks esto dejaria de ser practico y haria falta un indice
-    aproximado (ej. FAISS), pero no se justifica esa complejidad para este tamano.
+    aproximado, pero no se justifica esa complejidad para este tamano.
     """
     candidatos = [row for row in rows if row.content_type not in _CONTENT_TYPES_SIN_NEAR_DUPLICATE_CHECK]
     if len(candidatos) < 2:
@@ -214,9 +191,7 @@ class _UnionFind:
     ejemplo, A esta conectado con B, y B con C, entonces A/B/C quedan en el mismo
     grupo aunque A y C nunca se hayan comparado directamente). Es una version
     minima, sin las optimizaciones mas avanzadas (como "union por rango"), porque
-    la cantidad de archivos de este corpus es chica -- no hace falta optimizar
-    mas alla de que el codigo se entienda bien, para un desafio que se resuelve
-    en un tiempo acotado.
+    la cantidad de archivos de este corpus es chica.
     """
 
     def __init__(self) -> None:
@@ -251,8 +226,7 @@ def file_duplicate_components(
     todo el grupo).
 
     Dos documentos quedan en el mismo grupo si comparten AL MENOS un chunk con el
-    mismo hash exacto, O si `near_duplicate_pairs` (opcional, ver
-    find_near_duplicate_pairs) marca alguno de sus chunks como casi-duplicado de
+    mismo hash exacto, O si `near_duplicate_pairs`marca alguno de sus chunks como casi-duplicado de
     un chunk del otro documento. `splitting.py` usa esto como la unidad real para
     el split: todos los doc_id de un mismo grupo van al mismo split, sin excepcion.
 

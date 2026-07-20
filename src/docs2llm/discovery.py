@@ -2,8 +2,7 @@
 que procesar.
 
 Antes de leer una sola linea de contenido real, hay que decidir que archivos entran
-al pipeline y cuales no -- separar la señal del ruido. Se aplican dos filtros, y los
-dos estan explicados abajo (no son un "if" suelto sin contexto):
+al pipeline y cuales no -- separar la señal del ruido. Se aplican dos filtros:
 
   1. Solo se mira la carpeta de la version elegida por proyecto (la que dice
      config/config.yaml, clave canonical_sources) -- asi se evita procesar (y de
@@ -40,8 +39,7 @@ class SourceFile:
     relative_path: str
     # "markdown" o "openapi_spec": decide que parser se usa mas adelante.
     # No hay otros tipos posibles porque docs_raw/ solo contiene archivos .md y
-    # specs/swagger.yaml (ademas de documentationTypes.json, que ya se excluyo
-    # antes de llegar aca).
+    # specs/swagger.yaml.
     file_kind: str
     # La URL correspondiente dentro de documentationTypes.json (el campo "guide" o
     # "specifications"). Es una pista extra sobre de donde salio el archivo, ademas

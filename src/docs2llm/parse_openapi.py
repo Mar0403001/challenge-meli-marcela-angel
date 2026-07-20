@@ -1,6 +1,6 @@
 """Lee un archivo specs/swagger.yaml (una especificacion OpenAPI 3.0.x) y lo
 convierte en Secciones: una por operacion (ruta + metodo HTTP) y una por schema
-(la forma de un objeto de datos) -- nunca se trata como si fuera texto Markdown
+(la forma de un objeto de datos), nunca se trata como si fuera texto Markdown
 generico.
 
 Por que un lector dedicado en vez de tratar el YAML como texto plano: un
@@ -17,18 +17,15 @@ la ruta literal, sin asumir que siempre va a empezar en "components/" -- funcion
 igual para las 2 convenciones.
 
 Cada operacion y cada schema se convierte en una Section con un UNICO Block de
-tipo "api_spec": a diferencia de las secciones de Markdown (que capaz necesitan
-juntarse o partirse en chunking.py), estas unidades ya salen del tamaño correcto
-para ser un chunk por si solas -- chunking.py las trata como "ya listas", ver ese
-modulo.
+tipo "api_spec": a diferencia de las secciones de Markdown, estas unidades ya salen 
+del tamaño correcto para ser un chunk por si solas -- chunking.py las trata como "ya listas".
 """
 
 from __future__ import annotations
 
 from typing import Any
 
-# PyYAML (se instala como "PyYAML" pero se importa como "yaml") lee el archivo
-# swagger.yaml y lo convierte en diccionarios y listas de Python, de la misma
+# PyYAML lee el archivo swagger.yaml y lo convierte en diccionarios y listas de Python, de la misma
 # forma que se usa en config.py para leer config/config.yaml.
 import yaml
 
@@ -40,11 +37,7 @@ _HTTP_METHODS = {"get", "post", "put", "patch", "delete", "head", "options"}
 def _resolve_ref(spec: dict, ref: str) -> Any:
     """Sigue un puntero `$ref` (por ejemplo '#/components/schemas/Block' o
     '#/models/Zones') caminando el diccionario ya leido, un segmento a la vez.
-
-    No se asume que el puntero empiece en 'components/' -- price-engine-api usa un
-    `$ref` fuera de lo estandar, a '#/models/...', y esta funcion generica funciona
-    igual para las dos convenciones porque solo sigue la ruta literal que indica el
-    puntero. Devuelve None si esa ruta no existe (en vez de lanzar un error): un
+    Devuelve None si esa ruta no existe (en vez de lanzar un error): un
     `$ref` roto en el YAML no deberia tumbar todo el pipeline, solo esa referencia
     puntual queda sin resolver y se muestra tal cual esta (ver _describe_schema_ref).
     """
@@ -67,10 +60,7 @@ def _describe_schema_ref(spec: dict, schema_obj: dict, indent: str = "") -> list
     """Describe un schema (ya sea escrito directo ahi, o referenciado con `$ref`)
     en 1-2 lineas de texto plano, sin bajar en profundidad de forma recursiva --
     para un requestBody o response se prioriza que el resultado sea legible y
-    compacto, por encima de detallar cada nivel de anidamiento. Es una limitacion
-    conocida y aceptada: un schema con objetos dentro de
-    objetos solo describe el primer nivel de propiedades (ver
-    notebooks/diagnostico.ipynb, seccion 4).
+    compacto, por encima de detallar cada nivel de anidamiento.
     """
     if "$ref" in schema_obj:
         name = _ref_name(schema_obj["$ref"])
@@ -154,11 +144,8 @@ def _format_operation(spec: dict, path: str, method: str, operation: dict) -> st
 
 
 def _format_schema(name: str, schema: dict) -> str:
-    """Arma un texto compacto para una entrada de components/schemas (o del
-    'models:' fuera de lo estandar que usa price-engine-api -- ver la explicacion
-    al principio del archivo).
-
-    Depende del mismo formato fijo que _format_operation, y a proposito: qa_templates.py
+    """Arma un texto compacto para una entrada de components/schemas.
+    Depende del mismo formato fijo que _format_operation, y qa_templates.py
     necesita este formato exacto para poder extraer preguntas con expresiones regulares.
     """
     lines = [f"Schema: {name}", f"Type: {schema.get('type', 'object')}"]
@@ -214,10 +201,6 @@ def parse_openapi_sections(text: str) -> list[Section]:
                 )
             )
 
-    # components/schemas es la ubicacion estandar en OpenAPI 3.0; 'models' es la
-    # ubicacion fuera de lo estandar que usa price-engine-api (ver la explicacion al
-    # principio del archivo) -- se leen las dos fuentes en vez de asumir que un
-    # archivo solo puede tener una de las dos.
     schema_sources: dict[str, dict] = {}
     schema_sources.update((spec.get("components") or {}).get("schemas") or {})
     schema_sources.update(spec.get("models") or {})

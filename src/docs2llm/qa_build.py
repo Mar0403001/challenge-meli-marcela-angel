@@ -4,8 +4,7 @@ OpenAPI, un modelo de lenguaje para prosa), les aplica el control de calidad, le
 aplica el tope anti-volumen por documento, y devuelve las filas finales de qa.jsonl.
 
 Por que lee corpus.jsonl en vez de recibir los CorpusRow ya en memoria: esto es lo
-que garantiza, de forma estructural (no solo por una convencion que alguien podria
-olvidar), que el `split` de cada fila de preguntas sea EXACTAMENTE el mismo que ya
+que garantiza, de forma estructural, que el `split` de cada fila de preguntas sea EXACTAMENTE el mismo que ya
 se decidio para su chunk de origen -- nunca se calcula un split propio y distinto
 para las preguntas (ver notebooks/diagnostico.ipynb, seccion 7).
 
@@ -60,17 +59,14 @@ class QARow:
 # se prefieren las respuestas mas "verificables" (un valor cerrado tipo enum, o un
 # numero concreto, son mas dificiles de inventar por error y mas faciles de
 # evaluar automaticamente que una respuesta abierta generada por un modelo de
-# lenguaje). No es un juicio de "cual pregunta es mejor" en abstracto, es una
-# heuristica de que tan facil es verificar si la respuesta es correcta.
+# lenguaje). 
 _ANSWER_TYPE_PRIORITY = {"enum": 0, "numeric": 1, "boolean": 1, "extractive": 2, "generative": 3}
 
 
 def _generate_candidates_for_row(row: CorpusRow, qa_config: QAConfig, llm_client) -> tuple[list[QAPair], str]:
     """Devuelve (candidatos, metodo_de_generacion) para UN chunk. Decide de donde
     sacar las preguntas segun el content_type -- ver notebooks/diagnostico.ipynb,
-    seccion 9, para saber por que "code" no tiene ninguna fuente de preguntas en
-    este MVP, y por que is_low_signal bloquea especificamente el camino que usa
-    un modelo de lenguaje."""
+    seccion 9."""
     if row.duplicate_of is not None:
         # No tiene sentido generar (ni potencialmente pagar una llamada a la API
         # por) un chunk que ya se sabe que es un duplicado exacto de otro -- el
@@ -94,8 +90,7 @@ def _generate_candidates_for_row(row: CorpusRow, qa_config: QAConfig, llm_client
             # Este chunk puntual no pudo generar Q&A (agoto los reintentos de
             # qa_llm_generate.py, o fue un error no reintentable) -- se trata
             # como si no hubiera producido candidatos, en vez de tirar abajo el
-            # resto de la corrida (ver el docstring de este modulo, arriba, para
-            # el por que). Se deja un rastro explicito en stderr y en el reporte
+            # resto de la corrida. Se deja un rastro explicito en stderr y en el reporte
             # final (chunks_con_error_llm, ver build_qa_rows) para que la falla
             # nunca quede en silencio.
             print(f"[qa_build] AVISO: {row.id} no genero Q&A ({exc.__class__.__name__}: {exc}) -- se continua con el resto.", file=sys.stderr)

@@ -76,18 +76,13 @@ pipeline:
 
   dedup:
     # Segunda capa de deduplicacion, ademas del hash exacto: compara embeddings de
-    # sentence-transformers (modelo all-MiniLM-L6-v2, vendorizado en
-    # vendor/sentence_transformers_cache/, ver dedup.py) para agrupar chunks que
+    # sentence-transformers (modelo all-MiniLM-L6-v2, ver dedup.py) para agrupar chunks que
     # dicen "casi" lo mismo aunque el texto haya cambiado (ej. una tabla con una
     # columna renombrada entre versiones, ver 2p-revenue-optimizer-api). El enfoque
-    # general (embeddings + similitud coseno para deduplicacion semantica de un
-    # corpus de entrenamiento) tiene precedente publicado -- ver SemDeDup (Abbas et
-    # al., 2023, Meta AI, arXiv:2303.09540) -- pero ese paper no fija un umbral
-    # universal: el suyo esta calibrado para embeddings de imagen/texto a escala
-    # web, con un modelo y un corpus distintos a este. Por eso el umbral concreto de
+    # general embeddings + similitud coseno para deduplicacion semantica de un
+    # corpus de entrenamiento, calculando el umbral concreto de
     # este proyecto (ver near_duplicate_threshold, abajo) se calibro de forma
-    # empirica contra docs_raw real, en vez de copiar un numero de un paper que usa
-    # un modelo y un corpus distintos.
+    # empirica contra docs_raw real.
     near_duplicate_check: true
     # Umbral de similitud coseno para considerar dos chunks como casi-duplicados.
     # Calibracion empirica contra el corpus real: en pruebas directas, pares de contenido realmente
@@ -108,8 +103,7 @@ pipeline:
     # canonicos, un test del 10% podria terminar siendo un solo proyecto chico, con
     # metricas de alta varianza. La cuota se aplica sobre el PESO en chunks de
     # todo el corpus (ver splitting.py), no por cantidad de documentos ni por
-    # proyecto -- eso es lo que hace que el resultado real termine cerca de
-    # 60/20/20 medido en chunks, no solo "en promedio por proyecto".
+    # proyecto.
     test_fraction: 0.2
     val_fraction: 0.2
 

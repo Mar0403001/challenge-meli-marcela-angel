@@ -1,10 +1,5 @@
 """Conecta todos los pasos: discovery -> normalize/parse -> chunk -> dedup -> split
 -> corpus.jsonl.
-
-Este archivo no tiene logica de negocio propia (esa vive en cada paso por
-separado, para que cada uno se pueda entender y probar de forma aislada) -- solo
-conecta las piezas en el orden correcto y arma las filas finales con todos los
-campos de corpus.jsonl.
 """
 
 from __future__ import annotations
@@ -98,8 +93,7 @@ def build_corpus_rows(
 ) -> tuple[list[CorpusRow], dict, list[tuple[str, str]]]:
     """Conecta todo el pipeline (leer -> armar chunks -> deduplicar -> dividir en
     splits) y devuelve las filas finales de corpus.jsonl, el reporte del split por
-    proyecto, y los pares de chunks casi-duplicados encontrados (vacio si
-    `pipeline_config.dedup.near_duplicate_check` esta apagado).
+    proyecto, y los pares de chunks casi-duplicados encontrados.
 
     Por que se hace en 2 pasadas (ver el bucle mas abajo): la primera pasada lee
     TODOS los archivos, para detectar que bloques se repiten en el corpus
@@ -117,12 +111,7 @@ def build_corpus_rows(
     # Primera pasada: leer TODOS los archivos y separarlos en secciones/bloques
     # (todavia sin armar los chunks finales) para poder detectar que bloques
     # atomicos se repiten en MAS DE UN archivo del corpus completo -- eso no se
-    # puede saber mirando un archivo a la vez. Un ejemplo real que motivo esto: el
-    # boton HTML roto "Download X Template" se repite en 5 archivos de
-    # catalog-portfolio-api, pero cada vez queda mezclado con texto distinto
-    # alrededor; sin esta primera pasada, el chunk final de cada aparicion seria
-    # distinto, y la deduplicacion por fila jamas los detectaria como duplicados
-    # (esto se confirmo con este caso real, ver notebooks/diagnostico.ipynb, seccion 6).
+    # puede saber mirando un archivo a la vez. (ver notebooks/diagnostico.ipynb, seccion 6).
     print(f"\n[build-corpus] primera pasada: parseando {len(files)} archivos y detectando bloques duplicados...")
     sections_by_file: list[tuple[SourceFile, list]] = []
     block_hash_counts: Counter[str] = Counter()
@@ -152,8 +141,7 @@ def build_corpus_rows(
             # secciones sin bloques). Un archivo asi no aporta NINGUNA fila al
             # corpus, asi que no debe contarse en project_doc_ids (si se contara,
             # quedaria sin entrada en `components`/`doc_id_to_split` mas abajo,
-            # porque esos diccionarios se arman a partir de las filas reales --
-            # eso era justo lo que causaba un error aca antes de agregar este chequeo).
+            # porque esos diccionarios se arman a partir de las filas reales).
             continue
 
         doc_id = file.relative_path

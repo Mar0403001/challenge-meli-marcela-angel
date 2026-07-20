@@ -11,17 +11,10 @@ Reglas de armado (bin-packing), en orden de prioridad:
      acercarse al objetivo; si agregar el siguiente bloque pasaria el maximo, se
      cierra el chunk actual y se abre uno nuevo.
   3. EXCEPCION a la regla 1: si un UNICO bloque atomico, por si solo, ya supera
-     max_tokens (un caso raro: no se encontro ningun caso real en docs_raw al
-     escribir esto, pero el codigo lo cubre por las dudas), se usa una ventana con
-     solapamiento (overlap_tokens) -- el UNICO lugar de todo el pipeline donde de
-     verdad se corta texto a la mitad.
+     max_tokens, se usa una ventana con solapamiento (overlap_tokens).
   4. Secciones de Markdown muy chicas (con menos de target_tokens/4) NO se emiten
      como su propio chunk: sus bloques se "cargan hacia adelante" y se juntan con
-     los bloques de la SIGUIENTE seccion del mismo documento (una aproximacion a
-     propósito a "juntar con la seccion hermana": reconstruir el arbol exacto de
-     padres/hermanos no se justificaba para el tiempo disponible, y la siguiente
-     seccion en el orden real del documento casi siempre es su contexto natural,
-     ver notebooks/diagnostico.ipynb, seccion 5).
+     los bloques de la SIGUIENTE seccion del mismo documento.
   5. Las secciones que vienen de parse_openapi.py (content_type == "api_spec") NUNCA
      se juntan con sus vecinas aunque sean chicas: un schema corto como "Zones" (3
      lineas) sigue siendo una unidad completa y util por si sola para busqueda --
@@ -33,7 +26,7 @@ Reglas de armado (bin-packing), en orden de prioridad:
      generacion de preguntas pueda decidir explicitamente no generar nada a partir
      de el (ver qa_templates.py y qa_llm_generate.py).
 
-Conteo de tokens: se usa un tokenizador real, `tiktoken`, con el encoding
+Conteo de tokens: se usa un tokenizador `tiktoken`, con el encoding
 `cl100k_base` (el mismo que usan los modelos GPT-4/GPT-3.5, suficiente para medir 
 el tamaño de los chunks). 
 """
@@ -50,8 +43,7 @@ from docs2llm.config import ChunkingConfig
 from docs2llm.dedup import compute_content_hash
 from docs2llm.parse_units import Block
 
-# cl100k_base es un encoding fijo (OpenAI no lo cambia para modelos que ya salieron
-# al mercado), asi que guardar el Encoding en memoria una sola vez por proceso es
+# cl100k_base es un encoding fijo, asi que guardar el Encoding en memoria una sola vez por proceso es
 # seguro: no existe una version mas nueva que se este perdiendo por no recargarlo.
 @functools.lru_cache(maxsize=1)
 def _encoder() -> tiktoken.Encoding:
@@ -67,18 +59,13 @@ _MIN_INFORMATIVE_TOKENS = 12
 # Coincide (sin importar mayusculas/minusculas, ignorando puntuacion al final) con
 # textos de relleno reales que se encontraron en docs_raw: "TO DO." (aparece 3
 # veces en price-engine-api/general.md), "_TODO_" (en
-# order-workflow-api/services/database.md). No es una lista de todo texto de
-# relleno posible en cualquier documentacion -- es la lista de lo que
-# efectivamente se encontro en este corpus.
+# order-workflow-api/services/database.md).
 _PLACEHOLDER_RE = re.compile(r"^_?(to\s*do|tbd|todo|pendiente|n/a)_?\.?$", re.IGNORECASE)
 
 
 def _looks_like_placeholder(text: str) -> bool:
     """True si el texto ES (no solo si contiene) un texto de relleno conocido
     ("TO DO.", "_TODO_", etc.).
-
-    Es una lista confirmada contra docs_raw real, no una lista generica -- ver
-    _PLACEHOLDER_RE arriba.
     """
     return bool(_PLACEHOLDER_RE.match(text.strip()))
 
@@ -89,7 +76,7 @@ class Chunk:
     chunk_index: int  # se asigna recien al final, cuando ya se sabe el total de chunks del documento
     n_chunks_in_doc: int
     text: str
-    n_tokens: int  # conteo real, calculado con tiktoken (cl100k_base) -- ver el inicio de este archivo
+    n_tokens: int  # conteo calculado con tiktoken (cl100k_base)
     content_type: str  # "prose" | "table" | "code" | "api_spec" -- ver _dominant_content_type
     char_start: int
     char_end: int
@@ -114,10 +101,8 @@ def _count_tokens(text: str) -> int:
 def _window_fallback(blocks: list[Block], config: ChunkingConfig) -> list[tuple[str, int, int]]:
     """El unico lugar de todo el pipeline que corta texto a la mitad: se usa SOLO
     cuando un bloque atomico, por si solo, ya supera max_tokens. Trabaja
-    directamente sobre los identificadores que da tiktoken (no sobre posiciones de
-    caracteres): max_tokens/overlap_tokens ya son cantidades de tokens reales, sin
-    necesitar conversion. Devuelve (texto, cantidad_de_tokens, posicion_relativa)
-    por cada ventana.
+    directamente sobre los identificadores que da tiktoken: max_tokens/overlap_tokens ya son cantidades de tokens reales, sin
+    necesitar conversion. Devuelve (texto, cantidad_de_tokens, posicion_relativa) por cada ventana.
     """
     full_text = "\n\n".join(b.text for b in blocks)
     ids = _encoder().encode(full_text)
@@ -149,27 +134,21 @@ def _pack_blocks(
     target_tokens/max_tokens.
 
     `duplicate_block_hashes`: los hashes (ver dedup.compute_content_hash) de
-    bloques que aparecen identicos en MAS DE UN archivo del corpus (por ejemplo, el
-    boton HTML roto "Download X Template" que se repite en 5 archivos de
-    catalog-portfolio-api, o el ejemplo de error JSON "brand_not_found" que se
-    repite en 2 secciones distintas). Un bloque cuyo hash esta en este conjunto
+    bloques que aparecen identicos en MAS DE UN archivo del corpus. Un bloque cuyo hash esta en este conjunto
     NUNCA se junta con sus vecinos -- se emite como su propio chunk, aislado. Sin
     esto, el mismo fragmento repetido quedaria mezclado con texto DISTINTO
     alrededor en cada archivo, y el chunk final de cada aparicion terminaria
     siendo distinto -- la deduplicacion por fila (dedup.py) jamas los detectaria
     como duplicados, aunque el fragmento de adentro sí se repita de verdad (esto
-    se confirmo con un caso real, ver notebooks/diagnostico.ipynb, seccion 6, antes
-    de agregar este mecanismo).
+    se confirmo con un caso real, ver notebooks/diagnostico.ipynb, seccion 6).
     """
     if not blocks:
         return []
 
     block_tokens = [_count_tokens(b.text) for b in blocks]
 
-    # Caso excepcional (regla 3 de la explicacion al principio del archivo): un
-    # unico bloque ya supera el maximo por si solo. No se encontro ningun caso real
-    # en docs_raw, pero el codigo lo cubre de todas formas (ver
-    # tests/test_chunking.py, que sí fuerza este caso a proposito).
+    # Caso excepcional (regla 3): un unico bloque ya supera el maximo por si solo. No se encontro ningun caso real
+    # en docs_raw, pero el codigo lo cubre de todas formas (ver tests/test_chunking.py, que sí fuerza este caso a proposito).
     if len(blocks) == 1 and block_tokens[0] > config.max_tokens:
         chunks = []
         for window_text, n_tok, _rel_offset in _window_fallback(blocks, config):
@@ -213,8 +192,7 @@ def _pack_blocks(
 
     for block, n_tok in zip(blocks, block_tokens):
         if duplicate_block_hashes and compute_content_hash(block.text) in duplicate_block_hashes:
-            # Este bloque se detecto como repetido en OTRO archivo del corpus (ver
-            # la explicacion de esta funcion, arriba): se aisla en su propio chunk,
+            # Este bloque se detecto como repetido en OTRO archivo del corpus se aisla en su propio chunk,
             # nunca se mezcla con los bloques vecinos. Se marca is_low_signal solo
             # por el criterio normal de longitud/relleno, igual que cualquier otro
             # chunk -- estar duplicado no lo hace "poco informativo" por si mismo
@@ -238,8 +216,7 @@ def _pack_blocks(
             continue
 
         if n_tok > config.max_tokens:
-            # Este bloque puntual es gigante, pero hay otros bloques en la lista
-            # (si estuviera solo, ya se resolvio arriba): se cierra lo que se venia
+            # Este bloque puntual es gigante, pero hay otros bloques en la lista: se cierra lo que se venia
             # acumulando y este bloque se procesa aparte con una ventana, para no
             # mezclar los demas bloques con una ventana que no les corresponde.
             flush()
@@ -277,8 +254,7 @@ def chunk_sections(
     n_chunks_in_doc ya asignados (empezando en 0, consistente para todo el documento).
     """
     # Una seccion con menos tokens que este numero es candidata a juntarse con la
-    # siguiente, en vez de emitirse sola (regla 4 de la explicacion al principio
-    # del archivo).
+    # siguiente, en vez de emitirse sola (regla 4).
     min_tokens_before_merge = max(1, config.target_tokens // 4)
 
     raw_chunks: list[Chunk] = []

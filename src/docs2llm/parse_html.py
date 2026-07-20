@@ -22,10 +22,9 @@ def html_block_to_text(html: str) -> str:
     texto plano legible, dejando un espacio entre una etiqueta y otra (para que no
     queden dos palabras pegadas, tipo "TituloTexto").
 
-    Se usa el parser 'html.parser' que ya trae Python (no una libreria externa como
-    lxml) porque el HTML de docs_raw es simple -- divs, details, imagenes, links, sin
-    tablas HTML complejas ni casos raros -- y el parser mas liviano alcanza sin
-    perder nada, sin sumar una dependencia extra que ademas requeriria compilar codigo C.
+    Se usa el parser 'html.parser' que ya trae Python porque el HTML de docs_raw es simple 
+    -- divs, details, imagenes, links, sin tablas HTML complejas ni casos raros -- y el parser 
+    mas liviano alcanza sin perder nada, sin sumar una dependencia extra que ademas requeriria compilar codigo C.
     """
     soup = BeautifulSoup(html, "html.parser")
     return soup.get_text(" ", strip=True)
