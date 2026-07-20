@@ -90,8 +90,7 @@ pipeline:
     # un modelo y un corpus distintos.
     near_duplicate_check: true
     # Umbral de similitud coseno para considerar dos chunks como casi-duplicados.
-    # Calibracion empirica contra el corpus real (no un valor de la literatura, ver
-    # el comentario de arriba): en pruebas directas, pares de contenido realmente
+    # Calibracion empirica contra el corpus real: en pruebas directas, pares de contenido realmente
     # relacionado (ej. la tabla de 2p-revenue-optimizer-api con columnas renombradas)
     # dieron similitud ~0.75-0.95, contra ~0.1-0.3 para texto sin relacion -- 0.9
     # separa bien los dos grupos. A ese umbral, contra las 334 filas reales del
@@ -107,7 +106,10 @@ pipeline:
     seed: 42
     # 60/20/20 en vez del clasico 80/10/10: con pocos proyectos y documentos
     # canonicos, un test del 10% podria terminar siendo un solo proyecto chico, con
-    # metricas de alta varianza.
+    # metricas de alta varianza. La cuota se aplica sobre el PESO en chunks de
+    # todo el corpus (ver splitting.py), no por cantidad de documentos ni por
+    # proyecto -- eso es lo que hace que el resultado real termine cerca de
+    # 60/20/20 medido en chunks, no solo "en promedio por proyecto".
     test_fraction: 0.2
     val_fraction: 0.2
 

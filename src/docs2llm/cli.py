@@ -230,6 +230,12 @@ def cmd_build_qa(args: argparse.Namespace) -> None:
     print(f"  filas finales (tras tope anti-volumen): {qc_report['filas_finales_tras_tope_anti_volumen']}")
     print(f"  por split: {qc_report['filas_por_split']}")
     print(f"  por metodo: {qc_report['filas_por_metodo']}")
+    if qc_report["chunks_con_error_llm"]:
+        print(
+            f"  AVISO: {qc_report['chunks_con_error_llm']} chunk(s) de prosa fallaron al "
+            f"generar Q&A vía LLM y se saltearon (ver stderr arriba para el detalle) -- "
+            f"el resto de la corrida siguió normalmente."
+        )
 
 
 def main(argv: list[str] | None = None) -> int:

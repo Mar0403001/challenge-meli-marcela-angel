@@ -12,12 +12,9 @@ hibrido: el modelo de lenguaje se reserva para prosa y reglas de negocio, que es
 donde de verdad hace falta (ver qa_llm_generate.py).
 
 Todas las funciones de este archivo trabajan sobre `chunk.text` (el texto que ya
-quedo armado en corpus.jsonl), no vuelven a leer swagger.yaml ni el .md original:
-las funciones de parse_openapi.py escriben un formato de texto conocido y fijo
-(que nosotros mismos definimos), asi que se puede volver a sacar la informacion
-con expresiones regulares apuntadas a ESE formato especifico, en vez de tener que
-abrir y volver a leer el archivo original. Esto hace que la generacion de
-preguntas no dependa para nada de docs_raw/: solo necesita corpus.jsonl.
+quedo armado en corpus.jsonl), no vuelven a leer swagger.yaml ni el .md original.
+Esto hace que la generacion de preguntas no dependa para nada de docs_raw/: solo
+necesita corpus.jsonl.
 """
 
 from __future__ import annotations
@@ -30,8 +27,7 @@ from docs2llm.qa_units import QAPair
 # --- Plantillas para chunks de OpenAPI (content_type == "api_spec") -----------------
 # Estos patrones calzan EXACTAMENTE con el formato que escribe parse_openapi.py
 # (en _format_operation / _format_schema) -- si ese formato cambia, estas
-# expresiones regulares se tienen que actualizar junto con el (los dos lados de
-# este acoplamiento los controlamos nosotros mismos, a proposito).
+# expresiones regulares se tienen que actualizar junto con el.
 
 _ENDPOINT_LINE_RE = re.compile(r"^Endpoint: (\S+) (.+)$", re.MULTILINE)
 _SUMMARY_LINE_RE = re.compile(r"^Summary: (.+)$", re.MULTILINE)

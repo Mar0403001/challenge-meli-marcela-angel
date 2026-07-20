@@ -8,11 +8,23 @@ que garantiza, de forma estructural (no solo por una convencion que alguien podr
 olvidar), que el `split` de cada fila de preguntas sea EXACTAMENTE el mismo que ya
 se decidio para su chunk de origen -- nunca se calcula un split propio y distinto
 para las preguntas (ver notebooks/diagnostico.ipynb, seccion 7).
+
+Por que un chunk que falla no tira abajo toda la corrida: build-qa hace una
+llamada a la API por cada chunk de prosa (unos ~250 en este corpus), una por
+una, y las filas finales solo se escriben a disco al terminar TODO el lote (ver
+cli.py). Sin aislar el error por chunk, una sola falla que sobrevive a los
+reintentos de qa_llm_generate.py (rate limit sostenido, error no reintentable,
+lo que sea) perderia el trabajo ya hecho sobre los demas ~250 chunks -- carisimo
+en tiempo y en llamadas ya pagadas a la API. Por eso `_generate_candidates_for_row`
+atrapa cualquier excepcion de ese chunk puntual, la deja loggeada con claridad
+(ver `chunks_con_error_llm` en el reporte de build_qa_rows), y sigue con el resto
+en vez de propagar el error hacia arriba.
 """
 
 from __future__ import annotations
 
 import dataclasses
+import sys
 from collections import Counter, defaultdict
 
 import anthropic
@@ -69,14 +81,25 @@ def _generate_candidates_for_row(row: CorpusRow, qa_config: QAConfig, llm_client
         return generate_template_qa(row.text, row.content_type, row.section_path), "template"
 
     if row.content_type == "prose" and not row.is_low_signal and llm_client is not None:
-        pairs = generate_llm_qa(
-            project=row.project,
-            section_path=row.section_path,
-            chunk_text=row.text,
-            max_pairs=qa_config.max_pairs_per_document,
-            model=qa_config.llm_model,
-            client=llm_client,
-        )
+        try:
+            pairs = generate_llm_qa(
+                project=row.project,
+                section_path=row.section_path,
+                chunk_text=row.text,
+                max_pairs=qa_config.max_pairs_per_document,
+                model=qa_config.llm_model,
+                client=llm_client,
+            )
+        except Exception as exc:
+            # Este chunk puntual no pudo generar Q&A (agoto los reintentos de
+            # qa_llm_generate.py, o fue un error no reintentable) -- se trata
+            # como si no hubiera producido candidatos, en vez de tirar abajo el
+            # resto de la corrida (ver el docstring de este modulo, arriba, para
+            # el por que). Se deja un rastro explicito en stderr y en el reporte
+            # final (chunks_con_error_llm, ver build_qa_rows) para que la falla
+            # nunca quede en silencio.
+            print(f"[qa_build] AVISO: {row.id} no genero Q&A ({exc.__class__.__name__}: {exc}) -- se continua con el resto.", file=sys.stderr)
+            return [], "error"
         return pairs, "llm"
 
     return [], "n/a"  # "code", o prosa marcada is_low_signal: sin fuente de preguntas en este MVP
@@ -120,10 +143,15 @@ def build_qa_rows(
     """
     # 1. Generar TODOS los candidatos (las plantillas no cuestan nada; el modelo
     # de lenguaje solo se llama para prosa que no es de bajo contenido, ver
-    # _generate_candidates_for_row).
+    # _generate_candidates_for_row). Un chunk que falla (method == "error", ver
+    # _generate_candidates_for_row) no aporta candidatos pero tampoco corta el
+    # loop -- se cuenta aparte para que quede visible en el reporte final.
     candidates: list[tuple[CorpusRow, QAPair, str]] = []
+    n_chunks_con_error_llm = 0
     for row in corpus_rows:
         pairs, method = _generate_candidates_for_row(row, qa_config, llm_client)
+        if method == "error":
+            n_chunks_con_error_llm += 1
         for pair in pairs:
             candidates.append((row, pair, method))
 
@@ -187,5 +215,9 @@ def build_qa_rows(
         "filas_finales_tras_tope_anti_volumen": len(final_rows),
         "filas_por_split": dict(Counter(r.split for r in final_rows)),
         "filas_por_metodo": dict(Counter(r.generation_method for r in final_rows)),
+        # Chunks de prosa donde la llamada al LLM fallo (agoto los reintentos de
+        # qa_llm_generate.py, o fue un error no reintentable) y se salteo en vez
+        # de tirar abajo toda la corrida -- ver el docstring de este modulo.
+        "chunks_con_error_llm": n_chunks_con_error_llm,
     }
     return final_rows, report

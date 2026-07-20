@@ -1,18 +1,19 @@
 {
-  "candidatos_generados": 841,
+  "candidatos_generados": 837,
   "candidatos_por_metodo": {
     "template": 248,
-    "llm": 593
+    "llm": 589
   },
-  "candidatos_que_pasaron_qc": 828,
-  "filas_finales_tras_tope_anti_volumen": 246,
+  "candidatos_que_pasaron_qc": 821,
+  "filas_finales_tras_tope_anti_volumen": 248,
   "filas_por_split": {
-    "test": 73,
-    "train": 133,
-    "val": 40
+    "train": 113,
+    "val": 72,
+    "test": 63
   },
   "filas_por_metodo": {
-    "llm": 193,
+    "llm": 195,
     "template": 53
-  }
+  },
+  "chunks_con_error_llm": 0
 }

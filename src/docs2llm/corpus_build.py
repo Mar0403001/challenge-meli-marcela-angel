@@ -198,6 +198,12 @@ def build_corpus_rows(
 
     components = dedup.file_duplicate_components(rows, near_duplicate_pairs=near_duplicate_pairs)
 
+    # Peso de cada documento para el balanceo del split: cuantos chunks aporta al
+    # corpus final (ver splitting.py -- sin esto, un documento de 51 chunks y uno
+    # de 1 chunk cuentan "lo mismo" para la cuota 60/20/20, y el split real medido
+    # en chunks puede terminar lejos de esa proporcion).
+    chunk_count_by_doc_id = Counter(row.doc_id for row in rows)
+
     print(f"\n[build-corpus] asignando splits para {len(project_doc_ids)} proyectos...")
     doc_id_to_split, split_report = splitting.assign_splits(
         project_doc_ids=project_doc_ids,
@@ -205,6 +211,7 @@ def build_corpus_rows(
         seed=pipeline_config.split.seed,
         test_fraction=pipeline_config.split.test_fraction,
         val_fraction=pipeline_config.split.val_fraction,
+        chunk_count_by_doc_id=chunk_count_by_doc_id,
     )
     for row in rows:
         row.split = doc_id_to_split[row.doc_id]

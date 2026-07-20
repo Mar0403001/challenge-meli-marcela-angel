@@ -321,7 +321,7 @@ flowchart TD
       a2["<b>2 · normalize + parse_*.py</b>&#10;3 bugs de origen corregidos"]
       a3["<b>3 · chunking.py</b>&#10;334 chunks · tokens reales"]
       a4["<b>4 · dedup.py</b>&#10;37 duplicados exactos + 17 near-dup"]
-      a5["<b>5 · splitting.py</b>&#10;60/20/20 por proyecto"]
+      a5["<b>5 · splitting.py</b>&#10;60/20/20 global (LPT por peso)"]
       a1 --> a2 --> a3 --> a4 --> a5
     end
 
@@ -345,7 +345,7 @@ flowchart TD
     cfg -. "canonical_sources: qué versión usar por proyecto" .-> a1
     cfg -. "chunking: target=300 · max=512 · overlap=60 tok" .-> a3
     cfg -. "dedup: hash exacto + near_duplicate_threshold=0.9 (embeddings)" .-> a4
-    cfg -. "split: seed=42 · test=20% · val=20%, por proyecto" .-> a5
+    cfg -. "split: seed=42 · test=20% · val=20%, global por peso (chunks)" .-> a5
     cfg -. "qa: modelo=claude-sonnet-5" .-> b1
     cfg -. "qa: max_pairs_per_document=8" .-> b3
 
@@ -507,24 +507,28 @@ los 3 archivos: mismo split, sí o sí</div>
         </div>
         <div class="body-grid">
           <div>
-            <p>Asigna 60/20/20 <b>por proyecto</b> (no global), operando sobre las componentes conexas de dedup.py (nunca las parte). Seed fijo derivado por proyecto (<code>"seed:proyecto"</code>) para reproducibilidad sin correlacionar el orden entre proyectos. Casos de 1 o 2 documentos únicos tienen reglas explícitas, con warnings.</p>
-            <div class="why"><span class="lbl-small">Por qué así</span><p>60/20/20 en vez del clásico 80/10/10: con pocos documentos por proyecto, un test del 10% podría terminar siendo un solo archivo chico, con métricas de altísima varianza. Por proyecto (no global) porque un split global, con solo 10 proyectos, podría dejar alguno — como <code>payment-promise-gateway</code>, rico en reglas de negocio — completamente ausente de train o de test.</p></div>
+            <p>Asigna 60/20/20 <b>por cantidad de CHUNKS, global sobre todo el corpus</b> (no por cantidad de documentos, no recalculado por proyecto), operando sobre las componentes conexas de dedup.py (nunca las parte). Algoritmo LPT (longest-processing-time-first, un heurístico clásico de balanceo de carga): ordena los grupos de mayor a menor peso (en chunks) y cada uno se lo lleva el split que en ESE momento esté más lejos de su cuota — con el estado compartido entre TODOS los proyectos, no reiniciado en cada uno.</p>
+            <div class="why"><span class="lbl-small">Por qué así</span><p>Los documentos de este corpus van de 1 a 51 chunks — repartir "por cabeza" ignora ese peso. La primera versión de este balanceo sí era por proyecto, pero eso resultó un problema real: cada proyecto, evaluado aislado, mandaba "razonablemente" su documento más pesado a train; con 10 proyectos haciendo eso a la vez, sin coordinación entre ellos, train terminaba en ~74% del corpus real. Haciéndolo global (un solo estado de cuota compartido) el resultado real da 59.9/20.1/20.1% — prácticamente exacto.</p></div>
             <div class="uses"><span class="lbl-small">Usa</span><div class="chip-row"><span class="chip">random (stdlib, seed determinista)</span></div></div>
           </div>
           <div>
-            <div class="finding"><span class="lbl-small">Hallazgo</span><code>payment-promise-gateway</code> tiene 1 solo documento único → va entero a train, sin representación en val/test (warning explícito en <code>split_report.json</code>). Otros 3 proyectos (<code>2p-revenue-optimizer-api</code>, <code>unified-transaction-configs</code>, <code>zenith-keeper</code>) tienen exactamente 2 → 1 a train, 1 a test, ninguno a val.</div>
+            <div class="finding"><span class="lbl-small">Hallazgo</span>El costo de pasar a global: ya no se garantiza representación de cada proyecto en los 3 splits. <code>payment-promise-gateway</code> (1 solo documento, 20 chunks) quedó 100% en <code>test</code> esta corrida — antes, con cuota por proyecto, siempre caía en <code>train</code>. Queda auditado con warnings explícitos en <code>split_report.json</code> cuando un proyecto pierde representación en val o test (pasó en 5 de los 10 proyectos esta corrida).</div>
             <div class="diffbox" style="margin-top:1rem;">
               <div class="diff-cols">
-                <div class="diff-col before"><span class="diff-tag">antes · order-workflow-api, 8 documentos únicos</span>doc1, doc2, doc3, doc4, doc5,
-doc6, doc7, doc8 (sin asignar)</div>
-                <div class="diff-col after"><span class="diff-tag">después · 60/20/20 real</span>train: 4 documentos
-val: 2 documentos
-test: 2 documentos</div>
+                <div class="diff-col before"><span class="diff-tag">antes · balance por proyecto</span>train: 46.1% de los chunks
+val:   11.4%
+test:  42.5%
+(train recibía consistentemente
+menos que su cuota nominal)</div>
+                <div class="diff-col after"><span class="diff-tag">después · balance global por peso</span>train: 59.9% de los chunks
+val:   20.1%
+test:  20.1%
+(prácticamente 60/20/20 exacto)</div>
               </div>
             </div>
           </div>
         </div>
-        <div class="io">componentes + seed → doc_id → split</div>
+        <div class="io">componentes + pesos (chunks) + seed → doc_id → split</div>
       </article>
 
     </div>

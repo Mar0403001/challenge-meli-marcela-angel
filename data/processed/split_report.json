@@ -4,40 +4,64 @@
     "n_documentos_totales": 4,
     "conteo_por_split": {
       "train": 1,
-      "val": 0,
-      "test": 1
+      "val": 1,
+      "test": 0
+    },
+    "chunks_por_split": {
+      "train": 7,
+      "val": 9,
+      "test": 0
     },
     "warnings": [
-      "Solo 2 documentos/grupos en '2p-revenue-optimizer-api': 1 a train, 1 a test, ninguno a val."
+      "'2p-revenue-optimizer-api' quedo sin representacion en test en este split -- tiene pocos documentos y/o son chicos frente al resto del corpus."
     ]
   },
   "catalog-portfolio-api": {
     "n_documentos_unicos": 5,
     "n_documentos_totales": 8,
     "conteo_por_split": {
-      "train": 3,
-      "val": 1,
+      "train": 4,
+      "val": 0,
       "test": 1
     },
-    "warnings": []
+    "chunks_por_split": {
+      "train": 101,
+      "val": 0,
+      "test": 4
+    },
+    "warnings": [
+      "'catalog-portfolio-api' quedo sin representacion en val en este split -- tiene pocos documentos y/o son chicos frente al resto del corpus."
+    ]
   },
   "demand-forecast-docs": {
     "n_documentos_unicos": 4,
     "n_documentos_totales": 4,
     "conteo_por_split": {
-      "train": 2,
+      "train": 3,
       "val": 1,
-      "test": 1
+      "test": 0
     },
-    "warnings": []
+    "chunks_por_split": {
+      "train": 38,
+      "val": 1,
+      "test": 0
+    },
+    "warnings": [
+      "'demand-forecast-docs' quedo sin representacion en test en este split -- tiene pocos documentos y/o son chicos frente al resto del corpus."
+    ]
   },
   "order-workflow-api": {
     "n_documentos_unicos": 8,
     "n_documentos_totales": 8,
     "conteo_por_split": {
-      "train": 4,
-      "val": 2,
-      "test": 2
+      "train": 2,
+      "val": 5,
+      "test": 1
+    },
+    "chunks_por_split": {
+      "train": 6,
+      "val": 15,
+      "test": 1
     },
     "warnings": []
   },
@@ -45,31 +69,49 @@
     "n_documentos_unicos": 1,
     "n_documentos_totales": 1,
     "conteo_por_split": {
-      "train": 1,
+      "train": 0,
       "val": 0,
-      "test": 0
+      "test": 1
+    },
+    "chunks_por_split": {
+      "train": 0,
+      "val": 0,
+      "test": 20
     },
     "warnings": [
-      "Solo 1 documento/grupo unico en 'payment-promise-gateway': va entero a train, sin representacion en val/test para este proyecto."
+      "'payment-promise-gateway' tiene un unico documento/grupo: su representacion en val/test depende por completo del balance global del corpus, no de una cuota propia.",
+      "'payment-promise-gateway' quedo sin representacion en val en este split -- tiene pocos documentos y/o son chicos frente al resto del corpus."
     ]
   },
   "price-engine-api": {
     "n_documentos_unicos": 5,
     "n_documentos_totales": 5,
     "conteo_por_split": {
-      "train": 3,
-      "val": 1,
-      "test": 1
+      "train": 1,
+      "val": 0,
+      "test": 4
     },
-    "warnings": []
+    "chunks_por_split": {
+      "train": 1,
+      "val": 0,
+      "test": 10
+    },
+    "warnings": [
+      "'price-engine-api' quedo sin representacion en val en este split -- tiene pocos documentos y/o son chicos frente al resto del corpus."
+    ]
   },
   "traffic-gate-api": {
     "n_documentos_unicos": 5,
     "n_documentos_totales": 6,
     "conteo_por_split": {
-      "train": 3,
-      "val": 1,
+      "train": 1,
+      "val": 3,
       "test": 1
+    },
+    "chunks_por_split": {
+      "train": 2,
+      "val": 31,
+      "test": 6
     },
     "warnings": []
   },
@@ -77,21 +119,29 @@
     "n_documentos_unicos": 2,
     "n_documentos_totales": 2,
     "conteo_por_split": {
-      "train": 1,
-      "val": 0,
+      "train": 0,
+      "val": 1,
       "test": 1
     },
-    "warnings": [
-      "Solo 2 documentos/grupos en 'unified-transaction-configs': 1 a train, 1 a test, ninguno a val."
-    ]
+    "chunks_por_split": {
+      "train": 0,
+      "val": 1,
+      "test": 4
+    },
+    "warnings": []
   },
   "vendor-stockkeeper-api": {
     "n_documentos_unicos": 5,
     "n_documentos_totales": 5,
     "conteo_por_split": {
-      "train": 3,
+      "train": 1,
       "val": 1,
-      "test": 1
+      "test": 3
+    },
+    "chunks_por_split": {
+      "train": 10,
+      "val": 4,
+      "test": 22
     },
     "warnings": []
   },
@@ -100,11 +150,16 @@
     "n_documentos_totales": 2,
     "conteo_por_split": {
       "train": 1,
-      "val": 0,
-      "test": 1
+      "val": 1,
+      "test": 0
+    },
+    "chunks_por_split": {
+      "train": 35,
+      "val": 6,
+      "test": 0
     },
     "warnings": [
-      "Solo 2 documentos/grupos en 'zenith-keeper': 1 a train, 1 a test, ninguno a val."
+      "'zenith-keeper' quedo sin representacion en test en este split -- tiene pocos documentos y/o son chicos frente al resto del corpus."
     ]
   }
 }

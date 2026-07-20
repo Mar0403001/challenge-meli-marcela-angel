@@ -11,17 +11,44 @@ en catalog-portfolio-api se encontro una tabla de codigos de error repetida en 3
 archivos -- eso obliga a que esos 3 archivos queden SIEMPRE en el mismo split. Si
 no fuera asi, la misma tabla apareceria en train y en test a la vez.
 
-Por que se divide dentro de cada PROYECTO (con una cuota de aproximadamente
-60/20/20 dentro de cada uno) y no con un 60/20/20 global sobre todo el corpus: con
-solo 10 proyectos, un split global podria dejar un proyecto entero (por ejemplo
-payment-promise-gateway, uno de los que mas contenido util tiene) completamente
-afuera de train o de test. Dividiendo DENTRO de cada proyecto se garantiza que los
-3 splits tengan representacion de (casi) todos los proyectos.
+Por que la cuota se reparte por CANTIDAD DE CHUNKS y no por cantidad de
+documentos: los documentos de este corpus varian muchisimo en tamano (de 1 a mas
+de 50 chunks). Repartir por cantidad de documentos ignora ese peso -- por ejemplo,
+un proyecto con 5 documentos donde uno solo concentra 51 de los 75 chunks totales
+puede terminar con el split real (medido en chunks, que es la unidad que de verdad
+ve un modelo de retrieval/RAG o de fine-tuning) muy lejos de 60/20/20, aunque el
+reparto "por cabeza" haya sido el correcto.
+
+Por que el balanceo es GLOBAL (sobre todo el corpus a la vez) y no una cuota
+60/20/20 recalculada de cero DENTRO de cada proyecto: la primera version de este
+modulo hacia el balanceo por proyecto, pero eso tiene un problema real, que se
+encontro corriendo el pipeline contra docs_raw completo: cada proyecto, evaluado
+de forma aislada, manda "razonablemente" su documento mas pesado a la cuota mas
+grande (train) -- pero con 10 proyectos haciendo eso al mismo tiempo, sin que
+ninguno sepa cuanto ya absorbio train en los proyectos anteriores, el train
+agregado terminaba en ~74% del corpus real (chunks), muy por encima del 60%
+buscado. Por eso `assign_splits` pondera cada grupo de documentos por su
+cantidad de chunks (`chunk_count_by_doc_id`) y corre un algoritmo greedy tipo
+"longest-processing-time-first" (LPT, un heuristico clasico de balanceo de
+carga) sobre TODOS los grupos del corpus a la vez, en una sola pasada: ordena
+los grupos de mayor a menor peso y asigna cada uno, de a uno, al split que en
+ESE momento (con el estado acumulado de TODO lo ya asignado, no solo de este
+proyecto) este mas lejos de su cuota objetivo. Con el estado compartido entre
+proyectos, si train ya absorbio varios documentos grandes de proyectos
+anteriores, los proyectos que siguen dejan de mandarle todo lo grande a train
+por default -- el balance final se mide sobre el corpus completo, no proyecto
+por proyecto.
+
+El reporte (mas abajo, en `report`) se arma DESPUES de decidir todo, y sigue
+desglosado por proyecto -- sirve para auditar que cada proyecto tenga
+representacion razonable en cada split, aunque la decision de asignacion en si
+ya no reserva una cuota fija por proyecto.
 """
 
 from __future__ import annotations
 
 import random
+from collections import defaultdict
 
 
 def assign_splits(
@@ -30,94 +57,109 @@ def assign_splits(
     seed: int,
     test_fraction: float,
     val_fraction: float,
+    chunk_count_by_doc_id: dict[str, int],
 ) -> tuple[dict[str, str], dict[str, dict]]:
-    """Asigna train/val/test por proyecto (aproximadamente 60/20/20), sin partir
-    nunca un grupo de documentos conectados entre dos splits distintos. Devuelve
+    """Asigna train/val/test sobre el corpus COMPLETO (aproximadamente 60/20/20
+    EN CHUNKS, no en cantidad de documentos ni por proyecto), sin partir nunca un
+    grupo de documentos conectados entre dos splits distintos. Devuelve
     (doc_id -> split, un reporte con el detalle por proyecto).
 
     Por que se escribio un repartidor propio en vez de usar herramientas ya hechas
-    de scikit-learn (como GroupShuffleSplit o StratifiedGroupKFold): con varios
-    proyectos que tienen un solo documento canonico, el comportamiento de esas
-    herramientas en esos casos limite es dificil de predecir y de explicar en
-    vivo (ver notebooks/diagnostico.ipynb, seccion 7).
+    de scikit-learn (como GroupShuffleSplit o StratifiedGroupKFold): el
+    comportamiento de esas herramientas frente a grupos de peso muy dispar (un
+    documento de 1 chunk junto a uno de 51) es dificil de predecir y de explicar
+    en vivo (ver notebooks/diagnostico.ipynb, seccion 7).
 
     `project_doc_ids`: {nombre_de_proyecto: [doc_id, ...]} -- todos los doc_id
-    (archivos) de ese proyecto, en cualquier orden (se ordenan aca mismo, para que
-    el resultado sea siempre igual).
+    (archivos) de ese proyecto, en cualquier orden. Ya no se usa para calcular
+    cuotas (el balanceo es global), solo para armar el reporte desglosado.
     `components`: doc_id -> id_del_grupo, viene de dedup.file_duplicate_components.
+    `chunk_count_by_doc_id`: doc_id -> cantidad de chunks que aporta ese documento
+    al corpus final -- el "peso" que usa el balanceo (ver el modulo, arriba).
     """
-    assigned: dict[str, str] = {}  # id_del_grupo -> split, se va completando proyecto por proyecto
-    report: dict[str, dict] = {}
+    # Peso (en chunks) de cada grupo de documentos conectados: la suma de los
+    # chunks de todos los doc_id que caen en ese grupo, sin importar de que
+    # proyecto vengan (un grupo casi siempre pertenece a un unico proyecto, pero
+    # podria en principio abarcar mas de uno si dos proyectos distintos
+    # compartieran contenido -- no se encontro ningun caso asi en docs_raw, pero
+    # el calculo lo soporta igual).
+    docs_by_component: dict[str, list[str]] = defaultdict(list)
+    for doc_id, comp_id in components.items():
+        docs_by_component[comp_id].append(doc_id)
+    weight_of: dict[str, int] = {
+        comp_id: sum(chunk_count_by_doc_id[d] for d in docs) for comp_id, docs in docs_by_component.items()
+    }
 
+    total_weight = sum(weight_of.values())
+    targets = {
+        "train": total_weight * (1 - test_fraction - val_fraction),
+        "val": total_weight * val_fraction,
+        "test": total_weight * test_fraction,
+    }
+    assigned_weight = {"train": 0.0, "val": 0.0, "test": 0.0}
+    assigned: dict[str, str] = {}
+
+    # LPT (longest-processing-time-first): se procesan los grupos de mayor a
+    # menor peso, y cada uno se lo lleva el split que en ESE momento este mas
+    # lejos de su cuota objetivo (deficit = objetivo - ya_asignado). El shuffle
+    # (con semilla fija, para reproducibilidad) solo decide el desempate entre
+    # grupos de peso identico -- el orden real de asignacion lo decide el peso.
+    # El desempate entre splits con el MISMO deficit prefiere train, despues
+    # test, despues val (ver el orden de la tupla en el max de mas abajo): en
+    # un corpus con pocos grupos grandes, esto evita que val se termine
+    # llevando de arrastre algo que "por las dudas" convendria mas en test.
+    all_component_ids = sorted(weight_of)
+    rng = random.Random(seed)
+    shuffled = all_component_ids[:]
+    rng.shuffle(shuffled)
+    shuffled_pos = {c: i for i, c in enumerate(shuffled)}
+    order = sorted(all_component_ids, key=lambda c: (-weight_of[c], shuffled_pos[c]))
+
+    for c in order:
+        split = max(("train", "test", "val"), key=lambda s: targets[s] - assigned_weight[s])
+        assigned[c] = split
+        assigned_weight[split] += weight_of[c]
+
+    doc_id_to_split = {doc_id: assigned[comp_id] for doc_id, comp_id in components.items()}
+
+    # El reporte se arma por proyecto DESPUES de decidir todo, a partir del
+    # resultado ya calculado -- ya no hace falta procesar proyecto por proyecto
+    # para decidir nada, pero desglosarlo asi sigue sirviendo para auditar si
+    # alguno quedo sin representacion real en algun split.
+    report: dict[str, dict] = {}
     for project in sorted(project_doc_ids):
         doc_ids = project_doc_ids[project]
         component_ids = sorted({components[d] for d in doc_ids})
 
-        # Si un grupo de este proyecto ya quedo asignado al procesar OTRO proyecto
-        # (esto solo pasaria si dos proyectos distintos comparten un chunk
-        # identico -- no se encontro ningun caso asi en docs_raw, pero se
-        # contempla de todas formas en vez de asumir que nunca puede pasar), se
-        # respeta esa asignacion anterior y no se lo vuelve a contar en la cuota
-        # de este proyecto.
-        new_components = [c for c in component_ids if c not in assigned]
-
-        # La semilla se arma combinando la semilla global con el nombre del
-        # proyecto: esto hace que el resultado sea reproducible entre corridas
-        # (misma semilla -> mismo resultado, siempre), pero evita que el orden
-        # aleatorio sea el MISMO para cada proyecto (si no se hiciera esto, por
-        # ejemplo "el primer archivo en orden alfabetico" podria terminar siempre
-        # en test en todos los proyectos, solo por coincidencia del mezclado).
-        rng = random.Random(f"{seed}:{project}")
-        shuffled = new_components[:]
-        rng.shuffle(shuffled)
-        n = len(shuffled)
-
-        warnings: list[str] = []
-        if n == 0:
-            pass  # todos los grupos de este proyecto ya estaban asignados (un caso raro)
-        elif n == 1:
-            assigned[shuffled[0]] = "train"
-            warnings.append(
-                f"Solo 1 documento/grupo unico en '{project}': va entero a train, "
-                f"sin representacion en val/test para este proyecto."
-            )
-        elif n == 2:
-            assigned[shuffled[0]] = "train"
-            assigned[shuffled[1]] = "test"
-            warnings.append(f"Solo 2 documentos/grupos en '{project}': 1 a train, 1 a test, ninguno a val.")
-        else:
-            n_test = max(1, round(n * test_fraction))
-            n_val = max(1, round(n * val_fraction))
-            # Garantiza que quede al menos 1 grupo en train, recortando primero de
-            # val y despues de test si las fracciones configuradas dejarian train
-            # vacio (esto puede pasar con un n chico, por ejemplo n=3 con
-            # fracciones de 0.2 que al redondear dan 1 y 1... 3-1-1=1, esta bien;
-            # pero se deja este resguardo generico para cualquier combinacion de
-            # configuracion).
-            while n_test + n_val >= n and (n_val > 1 or n_test > 1):
-                if n_val > 1:
-                    n_val -= 1
-                else:
-                    n_test -= 1
-            test_group = shuffled[:n_test]
-            val_group = shuffled[n_test : n_test + n_val]
-            train_group = shuffled[n_test + n_val :]
-            for c in test_group:
-                assigned[c] = "test"
-            for c in val_group:
-                assigned[c] = "val"
-            for c in train_group:
-                assigned[c] = "train"
-
         counts = {"train": 0, "val": 0, "test": 0}
+        chunks = {"train": 0, "val": 0, "test": 0}
         for c in component_ids:
             counts[assigned[c]] += 1
+            # Solo se suma la parte de chunks que pertenece a ESTE proyecto (no
+            # el peso total del grupo, que podria incluir documentos de otro
+            # proyecto en el caso raro de contenido compartido entre proyectos).
+            chunks[assigned[c]] += sum(chunk_count_by_doc_id[d] for d in doc_ids if components[d] == c)
+
+        warnings: list[str] = []
+        if len(component_ids) == 1:
+            warnings.append(
+                f"'{project}' tiene un unico documento/grupo: su representacion en "
+                f"val/test depende por completo del balance global del corpus, no "
+                f"de una cuota propia."
+            )
+        for split in ("val", "test"):
+            if counts[split] == 0:
+                warnings.append(
+                    f"'{project}' quedo sin representacion en {split} en este split -- "
+                    f"tiene pocos documentos y/o son chicos frente al resto del corpus."
+                )
+
         report[project] = {
             "n_documentos_unicos": len(component_ids),
             "n_documentos_totales": len(doc_ids),  # puede ser mayor a n_documentos_unicos si hay duplicados exactos entre archivos
             "conteo_por_split": counts,
+            "chunks_por_split": chunks,
             "warnings": warnings,
         }
 
-    doc_id_to_split = {doc_id: assigned[comp_id] for doc_id, comp_id in components.items()}
     return doc_id_to_split, report
